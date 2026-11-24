@@ -30,6 +30,9 @@
     "db:migrate:test": "npm run db:migrate:test --workspace server",
     "db:migration:new": "npm run db:migration:new --workspace server --"
   },
+  "overrides": {
+    "effect": "3.22.5"
+  },
   "devDependencies": {
     "@types/node": "^24.19.2",
     "eslint": "^10.15.0",

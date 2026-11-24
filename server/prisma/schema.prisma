@@ -1,0 +1,42 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  runtime             = "nodejs"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+// The connection URL is configured in prisma.config.ts (Prisma ORM 7).
+datasource db {
+  provider = "postgresql"
+}
+
+enum RequestStatus {
+  NEW         @map("New")
+  IN_PROGRESS @map("In Progress")
+  COMPLETED   @map("Completed")
+
+  @@map("request_status")
+}
+
+enum RequestType {
+  IT
+  FACILITIES @map("Facilities")
+  HR
+  OTHER      @map("Other")
+
+  @@map("request_type")
+}
+
+model Request {
+  id          String        @id @default(uuid()) @db.Uuid
+  title       String        @db.VarChar(200)
+  description String
+  type        RequestType
+  status      RequestStatus @default(NEW)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  @@index([createdAt])
+  @@map("requests")
+}
