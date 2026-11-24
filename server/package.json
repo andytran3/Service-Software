@@ -5,17 +5,29 @@
   "type": "module",
   "scripts": {
     "postinstall": "prisma generate",
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:migrate:test": "prisma migrate deploy --config prisma.test.config.ts",
     "db:migration:new": "prisma migrate dev --create-only"
   },
   "devDependencies": {
-    "prisma": "7.10.1"
+    "@types/express": "^5.0.6",
+    "@types/supertest": "^7.2.1",
+    "prisma": "7.10.1",
+    "supertest": "^7.3.2",
+    "tsx": "^4.23.15",
+    "vitest": "^5.1.1"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
-    "dotenv": "^18.0.10"
+    "dotenv": "^18.0.10",
+    "express": "^5.3.0",
+    "zod": "^4.6.7"
   }
 }
