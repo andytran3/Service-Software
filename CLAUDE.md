@@ -267,13 +267,14 @@ Before proposing changes, inspect relevant documentation and ADRs. Identify conf
 
 Maintain:
 
-| Document                        | Responsibility                   |
-| ------------------------------- | -------------------------------- |
-| `README.md`                     | Project overview and setup       |
-| `docs/architecture/overview.md` | Current implemented architecture |
-| `docs/architecture/decisions/`  | Architectural Decision Records   |
-| `docs/testing.md`               | Testing strategy and commands    |
-| `docs/development.md`           | Setup and developer workflows    |
+| Document                        | Responsibility                                          |
+| ------------------------------- | ------------------------------------------------------- |
+| `README.md`                     | Project overview and setup                              |
+| `docs/architecture/overview.md` | Current implemented architecture                        |
+| `docs/architecture/decisions/`  | Architectural Decision Records                          |
+| `docs/testing.md`               | Testing strategy and commands                           |
+| `docs/development.md`           | Setup and developer workflows                           |
+| `docs/roadmap.md`               | Development plan and progress; update with every change |
 
 Documentation rules:
 
