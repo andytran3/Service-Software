@@ -1,83 +1,86 @@
 # Testing Guide
 
-## Purpose
+This document describes how to run the tests, what they currently cover, and what must be verified before a change is considered complete.
 
-This document defines how to run tests and what behavior must be verified before changes are considered complete.
+## Commands
 
-## Test levels
+Run from the repository root.
 
-### Unit tests
+| Command                | What it runs                         |
+| ---------------------- | ------------------------------------ |
+| `npm test`             | All server and client tests (Vitest) |
+| `npm test -w server`   | Server unit and integration tests    |
+| `npm test -w client`   | Client component tests               |
+| `npm run lint`         | ESLint                               |
+| `npm run typecheck`    | TypeScript in both workspaces        |
+| `npm run build`        | Production build of both workspaces  |
+| `npm run format:check` | Prettier formatting check            |
 
-Test individual functions and components in isolation.
+**The server tests need the test database.** Before running them:
 
-Focus on:
+```bash
+npm run db:up
+npm run db:migrate:test
+```
 
-- Input validation
-- Status rules
-- Business logic
-- UI behavior and form validation
+Run lint, typecheck, test, and build before proposing a commit.
 
-### Integration tests
+## Test database
 
-Test interactions between application layers.
+Integration tests use an isolated PostgreSQL database, `requests_test`, in the same container as the development database.
 
-Focus on:
+- Tests read only `DATABASE_URL_TEST`. The setup file (`server/src/test/setup.ts`) aborts the whole run unless that URL names a database ending in `_test` that differs from `DATABASE_URL`, then removes `DATABASE_URL` from the test process.
+- `server/src/app.test.ts` also checks `SELECT current_database()` before running.
+- Migrations are applied to the test database separately with `npm run db:migrate:test`.
+- Never point tests at the development database or use production data.
 
-- API request and response behavior
-- Database persistence
-- Missing records and invalid input
-- Error handling
+## Current tests
 
-### End-to-end tests
+### Server (`server/`, Vitest, Supertest)
 
-Use Playwright to test important user workflows in a browser.
+| File                                   | Covers                                                                                                                                                                                         |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/app.test.ts`                      | `GET /api/health` returns 200 after a real `SELECT 1` on the test database; a failing database check returns 503 without details; unknown routes return a JSON 404; malformed JSON returns 400 |
+| `src/middleware/error-handler.test.ts` | Unexpected errors return a generic 500 without the error message or stack trace (uses an app built inside the test, so production code has no test-only routes)                                |
+| `src/config/env.test.ts`               | Environment validation: valid values, `PORT` default, missing or non-PostgreSQL `DATABASE_URL`, invalid `PORT`                                                                                 |
 
-The main workflow is:
+The app receives its database check through dependency injection (`createApp({ checkDatabase })`), so tests can use the real check against the test database or a failing stub.
 
-1. Create a request.
-2. Confirm it appears in the request list.
-3. Open its details.
-4. Change its status.
-5. Reload and confirm the data persists.
+### Client (`client/`, Vitest, React Testing Library, jsdom)
+
+| File                      | Covers                                                                                                                                        |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/app/Layout.test.tsx` | Header, main navigation, and main landmarks; placeholder page; skip link is the first Tab stop; keyboard-reachable navigation; not-found page |
+
+Client tests use `createMemoryRouter` with the real route table and do not use the network.
+
+### End-to-end
+
+Not set up yet. Playwright end-to-end tests are planned once the request workflow exists.
+
+## Manual checks
+
+With `npm run dev` running:
+
+- http://localhost:5173 shows the app shell; pressing Tab first focuses "Skip to main content" with a visible focus ring.
+- http://localhost:5173/api/health returns `{"status":"ok","database":"ok"}`.
+- With the database stopped (`docker compose stop postgres`), the same URL returns 503 `{"status":"error","database":"unavailable"}`; it recovers after `docker compose start postgres`.
 
 ## Required behavior
 
-Tests should cover:
+As features are added, tests must cover:
 
-- Valid and invalid request creation
-- Required fields
-- Listing and retrieving requests
+- Valid and invalid request creation, including required fields
+- Request persistence, listing, and retrieval
 - Valid and invalid status updates
-- Requests with unknown IDs
+- Unknown request IDs
 - Loading, empty, success, and error UI states
-- Persistence across reloads
+- The end-to-end workflow: create a request, see it in the list, open it, change its status, reload, and confirm the data persists
 
-## Running checks
+## Expectations
 
-Use the project's package scripts. Keep the commands in `package.json` accurate.
-
-Typical checks include:
-
-- Lint
-- Type checking
-- Unit and integration tests
-- End-to-end tests
-- Production build
-
-Run the checks relevant to the change. Run the full suite before merging when practical.
-
-## Test data
-
-- Prefer deterministic tests that do not depend on live external services.
-- Use isolated test data and a dedicated test database.
-- Never use production data in tests.
-- Make seed data repeatable.
-- Do not reset or delete persistent data without explicit approval.
-
-## Expectations for AI-generated changes
-
-- Add or update tests for changed behavior.
-- Do not weaken or remove tests simply to make a change pass.
-- Do not claim a test passed unless it was actually run and verified.
-- Report failed, skipped, or unavailable checks clearly.
-- Keep tests focused on observable behavior rather than implementation details.
+- Add or update tests for every behavior change.
+- Prefer deterministic tests that do not depend on external services other than the local test database.
+- Test observable behavior, not implementation details.
+- Do not weaken or remove tests to make a change pass.
+- Report failed, skipped, or unavailable checks; never claim a check passed unless it was run.

@@ -1,56 +1,104 @@
 # Architecture Overview
 
+This document describes the architecture **as currently implemented**. Decision rationale lives in the [ADRs](decisions/).
+
 ## Purpose
 
-The application is an internal request management system. Employees can create requests, view existing requests, and update request statuses.
+An internal request management system where employees create, list, view, and update requests. The foundation is in place; request features are not implemented yet (see [Not yet implemented](#not-yet-implemented)).
 
-## System components
+## Components
 
-| Component | Responsibility                                                             |
-| --------- | -------------------------------------------------------------------------- |
-| Frontend  | User interface, form interaction, client-side validation, and API requests |
-| Backend   | API endpoints, server-side validation, business rules, and error handling  |
-| Database  | Persistent request storage and relational constraints                      |
+| Component | Location  | Responsibility                                                                |
+| --------- | --------- | ----------------------------------------------------------------------------- |
+| Frontend  | `client/` | React application: presentation, routing, user interaction, API communication |
+| Backend   | `server/` | Express API: validation, business rules, error handling, database access      |
+| Database  | Docker    | PostgreSQL: durable storage and relational integrity                          |
 
-## Technology
+The repository is an npm workspaces monorepo with `client` and `server` workspaces ([ADR 0002](decisions/0002-monorepo-with-npm-workspaces.md)). Technology choices and versions are recorded in [ADR 0001](decisions/0001-initial-technology-stack.md).
 
-- Frontend: React, TypeScript, Vite
-- Backend: Node.js, Express, TypeScript
-- Database: PostgreSQL
-- ORM and migrations: Prisma
-- Validation: Zod
-- Client routing: React Router
-- Server state: TanStack Query
+## Runtime flow (local development)
 
-## Request lifecycle
+```
+Browser ──► Vite dev server :5173 ──/api/*──► Express :3000 ──► Prisma Client ──► PostgreSQL :5432
+            (React app)          (proxy)                       (@prisma/adapter-pg)  (Docker)
+```
 
-1. A user creates a request through the frontend.
-2. The frontend sends the request to the backend API.
-3. The backend validates the input and applies business rules.
-4. Prisma writes the request to PostgreSQL.
-5. The backend returns the result.
-6. The frontend displays the result and updates the relevant data.
+- The frontend never accesses the database; it only calls `/api/*`.
+- In development, Vite proxies `/api` to the Express server, so no CORS configuration is needed.
 
-## Core data
+## Backend
 
-A request contains:
+- `createApp(dependencies)` (`server/src/app.ts`) builds the Express app. Dependencies such as the database check are injected, which keeps the app testable without test-only code.
+- `server/src/server.ts` loads the root `.env`, validates configuration with Zod (`config/env.ts`), creates the Prisma Client, and starts the server. It disconnects from the database on shutdown.
+- Middleware order: JSON body parsing (100 kB limit) → routes → JSON 404 handler → central error handler.
 
-- `id`
-- `title`
-- `description`
-- `type`
-- `status`
-- `createdAt`
-- `updatedAt`
+### Implemented endpoints
 
-Valid statuses are `New`, `In Progress`, and `Completed`. New requests start with `New`.
+| Method | Path          | Response                                                                                                                        |
+| ------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/health` | `200 {"status":"ok","database":"ok"}` after `SELECT 1`; `503 {"status":"error","database":"unavailable"}` if the database fails |
 
-## API
+### Error responses
 
-- `POST /api/requests` — create a request
-- `GET /api/requests` — list requests
-- `GET /api/requests/:id` — retrieve request details
-- `PATCH /api/requests/:id/status` — update request status
+All errors use one shape: `{ "error": { "code": string, "message": string } }`.
+
+| Situation                 | Status | Code                |
+| ------------------------- | ------ | ------------------- |
+| Unknown route             | 404    | `NOT_FOUND`         |
+| Malformed JSON body       | 400    | `INVALID_JSON`      |
+| Body over 100 kB          | 413    | `PAYLOAD_TOO_LARGE` |
+| Any other unhandled error | 500    | `INTERNAL_ERROR`    |
+
+Error details and stack traces are logged on the server only and never returned to clients.
+
+## Frontend
+
+- `client/src/main.tsx` sets up TanStack Query (`QueryClientProvider`) and React Router in data mode (`createBrowserRouter`).
+- `client/src/app/router.tsx` holds the route table: `/` renders the requests placeholder page inside `Layout`; unknown paths render a not-found page.
+- `Layout` provides a skip link, a header with the main navigation, and the `<main>` landmark. Styling uses Tailwind CSS with visible focus states.
+- Code is organized by feature where practical (`client/src/features/requests/`).
+
+## Data
+
+The schema is defined in `server/prisma/schema.prisma` and created by the migration `20261124034151_init`.
+
+Table `requests`:
+
+| Field         | Column        | Type                                                                    |
+| ------------- | ------------- | ----------------------------------------------------------------------- |
+| `id`          | `id`          | UUID, primary key (generated by Prisma)                                 |
+| `title`       | `title`       | `VARCHAR(200)`, required                                                |
+| `description` | `description` | `TEXT`, required                                                        |
+| `type`        | `type`        | enum `request_type`: `IT`, `Facilities`, `HR`, `Other`                  |
+| `status`      | `status`      | enum `request_status`: `New`, `In Progress`, `Completed`; default `New` |
+| `createdAt`   | `created_at`  | timestamp, default now; indexed                                         |
+| `updatedAt`   | `updated_at`  | timestamp, set by Prisma on update                                      |
+
+- Prisma ORM 7 with the `prisma-client` generator (output `server/src/generated/prisma`, not committed) and the `@prisma/adapter-pg` driver adapter.
+- Connection URLs live in `server/prisma.config.ts` (development) and `server/prisma.test.config.ts` (test), not in the schema.
+- Schema changes are made only through Prisma migrations.
+
+## Environments
+
+| Environment | Database        | Configuration                                  |
+| ----------- | --------------- | ---------------------------------------------- |
+| Development | `requests_dev`  | `DATABASE_URL` in the root `.env`              |
+| Test        | `requests_test` | `DATABASE_URL_TEST`; guarded to `*_test` names |
+
+Both databases run in one PostgreSQL 18 container (Compose project `service-software`, named volume `service-software_postgres-data`), bound to `127.0.0.1`. Production deployment is not defined yet.
+
+## Security
+
+- Secrets and connection settings come from environment variables; `.env` is gitignored and `.env.example` contains local-only values.
+- The `X-Powered-By` header is disabled, and error responses never include internal details.
+- **Authentication and authorization are out of scope for now.** There are no users or roles, and every API caller is treated the same. Adding them will be a separate architectural decision.
+
+## Not yet implemented
+
+- Request endpoints: `POST /api/requests`, `GET /api/requests`, `GET /api/requests/:id`, `PATCH /api/requests/:id/status`
+- Request pages: list, create, detail, and status update
+- Playwright end-to-end tests
+- Production deployment and application containers
 
 ## Architectural constraints
 
@@ -58,8 +106,4 @@ Valid statuses are `New`, `In Progress`, and `Completed`. New requests start wit
 - PostgreSQL is the source of truth for persisted requests.
 - The frontend must not access the database directly.
 - Database schema changes must use Prisma migrations.
-- Major architectural decisions must be documented in ADRs under `docs/architecture/decisions/`.
-
-## Updating this document
-
-Update this overview when the implemented architecture changes. Keep detailed decision rationale in ADRs rather than duplicating it here.
+- Major architectural decisions must be recorded as ADRs in `docs/architecture/decisions/`.
