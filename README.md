@@ -4,13 +4,15 @@ An internal web application where employees will create, list, view, and update 
 
 ## Current status
 
-**Phase 1 — project foundation.** The repository contains a working, tested skeleton:
+**Phase 2 — requests API.** The backend is complete for the core workflow; the request pages are not built yet.
 
 - PostgreSQL in Docker with separate development and test databases, and the `requests` table created by a Prisma migration.
-- An Express API with a database-backed health check (`GET /api/health`) and consistent JSON error responses.
+- An Express API with:
+  - `POST /api/requests`, `GET /api/requests`, `GET /api/requests/:id`, and `PATCH /api/requests/:id/status`, with server-side validation (Zod), consistent `{ data }` / `{ error }` responses, and data stored in PostgreSQL.
+  - A database-backed health check (`GET /api/health`).
 - A React application shell (header, navigation, placeholder page) served by Vite, which proxies `/api` to the API.
 
-Request features (the `/api/requests` endpoints and the request pages) are **not implemented yet**.
+The request pages (list, create, detail, status update) are **not implemented yet**; the UI does not call the requests API. See the [architecture overview](docs/architecture/overview.md#implemented-endpoints) for the API details.
 
 ## Technology
 
