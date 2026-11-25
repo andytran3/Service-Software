@@ -274,7 +274,6 @@ Maintain:
 | `docs/architecture/decisions/`  | Architectural Decision Records                          |
 | `docs/testing.md`               | Testing strategy and commands                           |
 | `docs/development.md`           | Setup and developer workflows                           |
-| `docs/roadmap.md`               | Development plan and progress; update with every change |
 
 Documentation rules:
 
