@@ -15,6 +15,7 @@ server/src/generated/
 
 # Test output
 coverage/
+.playwright-mcp/
 
 # Logs
 *.log
