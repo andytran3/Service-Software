@@ -4,7 +4,7 @@ This document describes the architecture **as currently implemented**. Decision 
 
 ## Purpose
 
-An internal request management system where employees create, list, view, and update requests. The foundation and the requests API are in place; the request pages are not implemented yet (see [Not yet implemented](#not-yet-implemented)).
+An internal request management system where employees create, list, view, and update requests. The core workflow (create, list, view, update status) is implemented in the API and the React pages (see [Not yet implemented](#not-yet-implemented) for what remains).
 
 ## Components
 
@@ -118,10 +118,31 @@ A missing or non-object body produces one detail with an empty `path`. Error det
 
 ## Frontend
 
-- `client/src/main.tsx` sets up TanStack Query (`QueryClientProvider`) and React Router in data mode (`createBrowserRouter`).
-- `client/src/app/router.tsx` holds the route table: `/` renders the requests placeholder page inside `Layout`; unknown paths render a not-found page.
-- `Layout` provides a skip link, a header with the main navigation, and the `<main>` landmark. Styling uses Tailwind CSS with visible focus states.
-- Code is organized by feature where practical (`client/src/features/requests/`).
+- `client/src/main.tsx` sets up TanStack Query (`QueryClientProvider`) and React Router in data mode (`createBrowserRouter`). Failed queries are retried once, except client errors (4xx), so a missing request shows "not found" immediately.
+- `Layout` provides a skip link, a header with the main navigation (Requests, New request; the current page is marked with `aria-current`), and the `<main>` landmark. Styling uses Tailwind CSS with visible focus states; shared class strings live in `client/src/app/styles.ts`.
+
+### Routes
+
+Defined in `client/src/app/router.tsx`, all rendered inside `Layout`:
+
+| Path            | Page                | Behavior                                                                                                                                                                                                                                              |
+| --------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`             | `RequestsPage`      | Table of requests (title link, type, status badge, created date), newest first. Loading, empty ("No requests yet"), and error states with "Try again".                                                                                                |
+| `/requests/new` | `NewRequestPage`    | Form with title, description, and type. Validates in the browser before sending, shows server `details` next to the matching fields, and moves focus to the first invalid field. On success it opens the new request and announces "Request created." |
+| `/requests/:id` | `RequestDetailPage` | All fields, plus a status dropdown with an "Update status" button (enabled only after a change). Announces "Status updated to …"; shows an error if the update fails. A 404 shows "Request not found"; other failures show an error with "Try again". |
+| `*`             | Not found           | "Page not found" with a link back to the list.                                                                                                                                                                                                        |
+
+### Requests feature (`client/src/features/requests/`)
+
+| File                    | Responsibility                                                                                                                                                                     |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `types.ts`              | Request type and status labels and the `InternalRequest` shape, mirroring the server (no shared package; see [ADR 0002](decisions/0002-monorepo-with-npm-workspaces.md))           |
+| `schemas.ts`            | Zod form schema with the server's limits and messages, and runtime checks for API responses                                                                                        |
+| `api.ts`                | `fetch` calls to the four endpoints. Unwraps `{ data }`; throws `ApiError` (status, code, message, details) for API errors, non-JSON or unexpected responses, and network failures |
+| `hooks.ts`              | TanStack Query hooks. Creating or updating a request writes the result into the detail cache and refreshes the list                                                                |
+| `components/`, `pages/` | `StatusBadge`, `ErrorState`, and the three pages                                                                                                                                   |
+
+The server remains the authority for validation; the browser-side checks only give faster feedback. Errors and success messages are announced with `role="alert"` and `role="status"`.
 
 ## Data
 
@@ -160,7 +181,6 @@ Both databases run in one PostgreSQL 18 container (Compose project `service-soft
 
 ## Not yet implemented
 
-- Request pages: list, create, detail, and status update (the client does not call the requests API yet)
 - Pagination and filtering of the request list
 - Editing fields other than status, and deleting requests
 - Playwright end-to-end tests
