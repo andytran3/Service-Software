@@ -29,6 +29,16 @@ export function Layout() {
                   Requests
                 </NavLink>
               </li>
+              <li>
+                <NavLink
+                  to="/requests/new"
+                  className={({ isActive }) =>
+                    `rounded px-2 py-1 ${isActive ? 'font-semibold text-blue-700' : 'text-gray-700'} ${focusRing}`
+                  }
+                >
+                  New request
+                </NavLink>
+              </li>
             </ul>
           </nav>
         </div>

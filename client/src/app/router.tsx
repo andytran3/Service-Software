@@ -1,6 +1,8 @@
 import { Link, type RouteObject } from 'react-router';
+import { NewRequestPage } from '../features/requests/pages/NewRequestPage';
 import { RequestsPage } from '../features/requests/pages/RequestsPage';
 import { Layout } from './Layout';
+import { textLink } from './styles';
 
 function NotFoundPage() {
   return (
@@ -9,10 +11,7 @@ function NotFoundPage() {
         Page not found
       </h1>
       <p className="mt-2">
-        <Link
-          to="/"
-          className="text-blue-700 underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-        >
+        <Link to="/" className={textLink}>
           Go to requests
         </Link>
       </p>
@@ -26,6 +25,7 @@ export const routes: RouteObject[] = [
     Component: Layout,
     children: [
       { index: true, Component: RequestsPage },
+      { path: 'requests/new', Component: NewRequestPage },
       { path: '*', Component: NotFoundPage },
     ],
   },
