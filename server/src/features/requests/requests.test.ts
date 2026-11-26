@@ -249,6 +249,23 @@ describe('PATCH /api/requests/:id/status', () => {
     },
   );
 
+  it.each([
+    ['Awaiting approval', 'AWAITING_APPROVAL'],
+    ['Needs your reply', 'NEEDS_YOUR_REPLY'],
+  ] as const)('stores "%s" as %s and lists it with its label', async (label, stored) => {
+    const created = await createViaApi();
+
+    const updated = await request(app)
+      .patch(`/api/requests/${created.id}/status`)
+      .send({ status: label });
+    expect(updated.status).toBe(200);
+
+    const record = await prisma.request.findUnique({ where: { id: created.id } });
+    expect(record?.status).toBe(stored);
+    const listed = await request(app).get('/api/requests');
+    expect(listed.body.data).toEqual([expect.objectContaining({ id: created.id, status: label })]);
+  });
+
   it('allows moving from Completed back to New', async () => {
     const created = await createViaApi();
     await request(app).patch(`/api/requests/${created.id}/status`).send({ status: 'Completed' });
@@ -269,7 +286,11 @@ describe('PATCH /api/requests/:id/status', () => {
       .send({ status: 'Done' });
 
     expect(expectValidationError(response)).toEqual([
-      { path: 'status', message: 'Status must be one of: New, In Progress, Completed' },
+      {
+        path: 'status',
+        message:
+          'Status must be one of: New, Awaiting approval, In Progress, Needs your reply, Completed',
+      },
     ]);
     const stored = await prisma.request.findUnique({ where: { id: created.id } });
     expect(stored?.status).toBe('NEW');
@@ -281,7 +302,11 @@ describe('PATCH /api/requests/:id/status', () => {
     const response = await request(app).patch(`/api/requests/${created.id}/status`).send({});
 
     expect(expectValidationError(response)).toEqual([
-      { path: 'status', message: 'Status must be one of: New, In Progress, Completed' },
+      {
+        path: 'status',
+        message:
+          'Status must be one of: New, Awaiting approval, In Progress, Needs your reply, Completed',
+      },
     ]);
   });
 

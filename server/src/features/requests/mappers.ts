@@ -15,13 +15,17 @@ export interface RequestDto {
 
 const statusLabels: Record<RequestStatus, RequestStatusLabel> = {
   NEW: 'New',
+  AWAITING_APPROVAL: 'Awaiting approval',
   IN_PROGRESS: 'In Progress',
+  NEEDS_YOUR_REPLY: 'Needs your reply',
   COMPLETED: 'Completed',
 };
 
 const statusValues: Record<RequestStatusLabel, RequestStatus> = {
   New: 'NEW',
+  'Awaiting approval': 'AWAITING_APPROVAL',
   'In Progress': 'IN_PROGRESS',
+  'Needs your reply': 'NEEDS_YOUR_REPLY',
   Completed: 'COMPLETED',
 };
 
