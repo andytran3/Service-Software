@@ -1,17 +1,16 @@
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { createMemoryRouter, RouterProvider } from 'react-router';
-import { describe, expect, it } from 'vitest';
-import { routes } from './router';
+import { screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { jsonResponse, stubFetch } from '../test/fetch';
+import { renderRoute } from '../test/render';
 
-function renderAt(path: string) {
-  const router = createMemoryRouter(routes, { initialEntries: [path] });
-  render(<RouterProvider router={router} />);
-}
+beforeEach(() => {
+  // The requests page loads the list; an empty list keeps these layout tests focused.
+  stubFetch(() => jsonResponse(200, { data: [] }));
+});
 
 describe('Layout', () => {
   it('renders the header, main navigation, and main landmark', () => {
-    renderAt('/');
+    renderRoute('/');
 
     expect(screen.getByRole('banner')).toHaveTextContent('Internal Requests');
     const nav = screen.getByRole('navigation', { name: 'Main' });
@@ -19,15 +18,14 @@ describe('Layout', () => {
     expect(screen.getByRole('main')).toHaveAttribute('id', 'main');
   });
 
-  it('renders the requests placeholder page at /', () => {
-    renderAt('/');
+  it('renders the requests page at /', () => {
+    renderRoute('/');
 
     expect(screen.getByRole('heading', { level: 1, name: 'Requests' })).toBeInTheDocument();
   });
 
   it('makes the skip link the first keyboard stop and points it at main content', async () => {
-    const user = userEvent.setup();
-    renderAt('/');
+    const { user } = renderRoute('/');
 
     await user.tab();
 
@@ -37,8 +35,7 @@ describe('Layout', () => {
   });
 
   it('reaches the navigation links with the keyboard', async () => {
-    const user = userEvent.setup();
-    renderAt('/');
+    const { user } = renderRoute('/');
 
     await user.tab(); // skip link
     await user.tab(); // app name
@@ -48,7 +45,7 @@ describe('Layout', () => {
   });
 
   it('shows a not-found page for unknown routes', () => {
-    renderAt('/does-not-exist');
+    renderRoute('/does-not-exist');
 
     expect(screen.getByRole('heading', { level: 1, name: 'Page not found' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Go to requests' })).toHaveAttribute('href', '/');

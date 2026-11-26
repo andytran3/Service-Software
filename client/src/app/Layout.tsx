@@ -1,7 +1,5 @@
 import { Link, NavLink, Outlet } from 'react-router';
-
-const focusRing =
-  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600';
+import { focusRing } from './styles';
 
 export function Layout() {
   return (
