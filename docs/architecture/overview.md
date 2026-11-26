@@ -47,13 +47,13 @@ Routes call `schema.parse()`; a validation failure throws a `ZodError`, which Ex
 
 ### Implemented endpoints
 
-| Method | Path                       | Success                                                     | Errors                                            |
-| ------ | -------------------------- | ----------------------------------------------------------- | ------------------------------------------------- |
-| GET    | `/api/health`              | `200 {"status":"ok","database":"ok"}` after `SELECT 1`      | `503 {"status":"error","database":"unavailable"}` |
-| POST   | `/api/requests`            | `201 { data: Request }` with `Location: /api/requests/{id}` | `400 VALIDATION_ERROR`                            |
-| GET    | `/api/requests`            | `200 { data: Request[] }`, newest first; `[]` when empty    | —                                                 |
-| GET    | `/api/requests/:id`        | `200 { data: Request }`                                     | `404 NOT_FOUND`                                   |
-| PATCH  | `/api/requests/:id/status` | `200 { data: Request }`                                     | `400 VALIDATION_ERROR`, `404 NOT_FOUND`           |
+| Method | Path                       | Success                                                                                                        | Errors                                            |
+| ------ | -------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| GET    | `/api/health`              | `200 {"status":"ok","database":"ok"}` after `SELECT 1`                                                         | `503 {"status":"error","database":"unavailable"}` |
+| POST   | `/api/requests`            | `201 { data: Request }` with `Location: /api/requests/{id}`                                                    | `400 VALIDATION_ERROR`                            |
+| GET    | `/api/requests`            | `200 { data: Request[] }`, newest first; `[]` when empty or nothing matches. Optional `?q=` search (see below) | `400 VALIDATION_ERROR` (invalid query)            |
+| GET    | `/api/requests/:id`        | `200 { data: Request }`                                                                                        | `404 NOT_FOUND`                                   |
+| PATCH  | `/api/requests/:id/status` | `200 { data: Request }`                                                                                        | `400 VALIDATION_ERROR`, `404 NOT_FOUND`           |
 
 A `Request` in responses:
 
@@ -73,17 +73,20 @@ The API uses the status labels `New`, `Awaiting approval`, `In Progress`, `Needs
 
 ### Validation and business rules
 
-| Input            | Rule                                                                              |
-| ---------------- | --------------------------------------------------------------------------------- |
-| `title`          | Required string, trimmed, 1–200 characters                                        |
-| `description`    | Required string, trimmed, 1–5000 characters                                       |
-| `type`           | One of `IT`, `Facilities`, `HR`, `Other`                                          |
-| `status` (PATCH) | One of `New`, `Awaiting approval`, `In Progress`, `Needs your reply`, `Completed` |
-| Unknown fields   | Rejected on create and on status update                                           |
-| `:id`            | Must be a UUID; any other value is treated as an unknown request (`404`)          |
+| Input                    | Rule                                                                                                             |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `title`                  | Required string, trimmed, 1–200 characters                                                                       |
+| `description`            | Required string, trimmed, 1–5000 characters                                                                      |
+| `type`                   | One of `IT`, `Facilities`, `HR`, `Other`                                                                         |
+| `status` (PATCH)         | One of `New`, `Awaiting approval`, `In Progress`, `Needs your reply`, `Completed`                                |
+| Unknown fields           | Rejected on create and on status update                                                                          |
+| `q` (GET list)           | Optional string, trimmed; blank means no search; at most 200 characters; a single value (`?q=a&q=b` is rejected) |
+| Unknown query parameters | Rejected on the list endpoint (`Unknown parameter "…"`)                                                          |
+| `:id`                    | Must be a UUID; any other value is treated as an unknown request (`404`)                                         |
 
 - New requests always start as `New`. Clients cannot set `status`, `id`, or timestamps on create; the database default sets the status.
 - Any valid status can change to any other valid status. Every status update sets `updatedAt`. "Open" means every status except `Completed`. The status model is described in [ADR 0003](decisions/0003-extend-request-status-model.md).
+- **Search:** `GET /api/requests?q=` returns the requests whose title or description contains the search text as one phrase, ignoring case, newest first. It uses Prisma's `contains` with `mode: 'insensitive'` (PostgreSQL `ILIKE`). `%`, `_`, and `\` match literally: Prisma escapes `%` and `_`, and the service doubles backslashes, which PostgreSQL treats as the `LIKE` escape character. There is no index for search, so each search scans the table; a trigram index (`pg_trgm`) is the upgrade path if that becomes slow.
 - A status update is a single database update. A missing record is detected from Prisma's `P2025` error (no separate lookup, which could race) and returned as `404`.
 
 ### Error responses
@@ -125,22 +128,22 @@ A missing or non-object body produces one detail with an empty `path`. Error det
 
 Defined in `client/src/app/router.tsx`, all rendered inside `Layout`:
 
-| Path            | Page                | Behavior                                                                                                                                                                                                                                              |
-| --------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/`             | `RequestsPage`      | Table of requests (title link, type, status badge, created date), newest first. Loading, empty ("No requests yet"), and error states with "Try again".                                                                                                |
-| `/requests/new` | `NewRequestPage`    | Form with title, description, and type. Validates in the browser before sending, shows server `details` next to the matching fields, and moves focus to the first invalid field. On success it opens the new request and announces "Request created." |
-| `/requests/:id` | `RequestDetailPage` | All fields, plus a status dropdown with an "Update status" button (enabled only after a change). Announces "Status updated to …"; shows an error if the update fails. A 404 shows "Request not found"; other failures show an error with "Try again". |
-| `*`             | Not found           | "Page not found" with a link back to the list.                                                                                                                                                                                                        |
+| Path            | Page                | Behavior                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| --------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`             | `RequestsPage`      | Table of requests (title link, type, status badge, created date), newest first. A labelled "Search requests" form searches titles and descriptions when submitted; the text is kept in the URL (`/?q=…`), so it survives a reload and follows back/forward. During a search it announces "N requests match …" and shows "Clear search"; nothing found shows "No requests match …". Loading, empty ("No requests yet"), and error states with "Try again". |
+| `/requests/new` | `NewRequestPage`    | Form with title, description, and type. Validates in the browser before sending, shows server `details` next to the matching fields, and moves focus to the first invalid field. On success it opens the new request and announces "Request created."                                                                                                                                                                                                     |
+| `/requests/:id` | `RequestDetailPage` | All fields, plus a status dropdown with an "Update status" button (enabled only after a change). Announces "Status updated to …"; shows an error if the update fails. A 404 shows "Request not found"; other failures show an error with "Try again".                                                                                                                                                                                                     |
+| `*`             | Not found           | "Page not found" with a link back to the list.                                                                                                                                                                                                                                                                                                                                                                                                            |
 
 ### Requests feature (`client/src/features/requests/`)
 
-| File                    | Responsibility                                                                                                                                                                     |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `types.ts`              | Request type and status labels and the `InternalRequest` shape, mirroring the server (no shared package; see [ADR 0002](decisions/0002-monorepo-with-npm-workspaces.md))           |
-| `schemas.ts`            | Zod form schema with the server's limits and messages, and runtime checks for API responses                                                                                        |
-| `api.ts`                | `fetch` calls to the four endpoints. Unwraps `{ data }`; throws `ApiError` (status, code, message, details) for API errors, non-JSON or unexpected responses, and network failures |
-| `hooks.ts`              | TanStack Query hooks. Creating or updating a request writes the result into the detail cache and refreshes the list                                                                |
-| `components/`, `pages/` | `StatusBadge` (status text with a colour per status; amber marks `Needs your reply`), `ErrorState`, and the three pages                                                            |
+| File                    | Responsibility                                                                                                                                                                                                                        |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `types.ts`              | Request type and status labels and the `InternalRequest` shape, mirroring the server (no shared package; see [ADR 0002](decisions/0002-monorepo-with-npm-workspaces.md))                                                              |
+| `schemas.ts`            | Zod form schema with the server's limits and messages, and runtime checks for API responses                                                                                                                                           |
+| `api.ts`                | `fetch` calls to the four endpoints (the list takes optional search text, sent as `q`). Unwraps `{ data }`; throws `ApiError` (status, code, message, details) for API errors, non-JSON or unexpected responses, and network failures |
+| `hooks.ts`              | TanStack Query hooks. List queries are keyed by their search text. Creating or updating a request writes the result into the detail cache and refreshes every cached list                                                             |
+| `components/`, `pages/` | `StatusBadge` (status text with a colour per status; amber marks `Needs your reply`), `ErrorState`, and the three pages                                                                                                               |
 
 The server remains the authority for validation; the browser-side checks only give faster feedback. Errors and success messages are announced with `role="alert"` and `role="status"`.
 
@@ -182,7 +185,7 @@ Both databases run in one PostgreSQL 18 container (Compose project `service-soft
 
 ## Not yet implemented
 
-- Pagination and filtering of the request list
+- Pagination of the request list, and filtering by status or type (text search is implemented)
 - Editing fields other than status, and deleting requests
 - Continuous integration (CI)
 - Production deployment and application containers
