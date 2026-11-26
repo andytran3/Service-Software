@@ -1,1 +1,16 @@
 @import 'tailwindcss';
+
+/*
+ * Brand colour tokens (teal). Components use brand-* classes (e.g. bg-brand-700) instead of a
+ * palette colour, so the brand can change here in one place. Measured contrast: brand-700 is
+ * 5.4:1 on white (text and white-on-brand buttons) and 5.1:1 on gray-50; brand-600, used for
+ * focus rings, is 3.7:1 on white and 3.5:1 on gray-50 (non-text needs 3:1).
+ */
+@theme {
+  --color-brand-50: var(--color-teal-50);
+  --color-brand-100: var(--color-teal-100);
+  --color-brand-600: var(--color-teal-600);
+  --color-brand-700: var(--color-teal-700);
+  --color-brand-800: var(--color-teal-800);
+  --color-brand-900: var(--color-teal-900);
+}

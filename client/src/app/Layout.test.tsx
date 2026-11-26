@@ -12,7 +12,7 @@ describe('Layout', () => {
   it('renders the header, main navigation, and main landmark', () => {
     renderRoute('/');
 
-    expect(screen.getByRole('banner')).toHaveTextContent('Internal Requests');
+    expect(screen.getByRole('banner')).toHaveTextContent('Service Portal');
     const nav = screen.getByRole('navigation', { name: 'Main' });
     expect(within(nav).getByRole('link', { name: 'Requests' })).toHaveAttribute('href', '/');
     expect(within(nav).getByRole('link', { name: 'New request' })).toHaveAttribute(

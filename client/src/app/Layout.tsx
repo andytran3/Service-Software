@@ -12,9 +12,9 @@ export function Layout() {
       </a>
 
       <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-4">
           <Link to="/" className={`text-lg font-semibold ${focusRing}`}>
-            Internal Requests
+            Service Portal
           </Link>
           <nav aria-label="Main">
             <ul className="flex gap-4">
@@ -23,7 +23,7 @@ export function Layout() {
                   to="/"
                   end
                   className={({ isActive }) =>
-                    `rounded px-2 py-1 ${isActive ? 'font-semibold text-blue-700' : 'text-gray-700'} ${focusRing}`
+                    `rounded px-2 py-1 ${isActive ? 'font-semibold text-brand-700' : 'text-gray-700'} ${focusRing}`
                   }
                 >
                   Requests
@@ -33,7 +33,7 @@ export function Layout() {
                 <NavLink
                   to="/requests/new"
                   className={({ isActive }) =>
-                    `rounded px-2 py-1 ${isActive ? 'font-semibold text-blue-700' : 'text-gray-700'} ${focusRing}`
+                    `rounded px-2 py-1 ${isActive ? 'font-semibold text-brand-700' : 'text-gray-700'} ${focusRing}`
                   }
                 >
                   New request
