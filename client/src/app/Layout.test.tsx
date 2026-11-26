@@ -53,14 +53,22 @@ describe('Layout', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Requests' })).toBeInTheDocument();
   });
 
-  it.each([
-    ['/', '/requests', ''],
-    ['/?q=badge', '/requests', '?q=badge'],
-  ])('redirects %s to the request list, keeping any search', async (path, pathname, search) => {
+  it.each(['/', '/?q=', '/?q=%20%20'])('renders the landing page at %s', async (path) => {
     const { router } = renderRoute(path);
 
-    await waitFor(() => expect(router.state.location.pathname).toBe(pathname));
-    expect(router.state.location.search).toBe(search);
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'How can we help?' }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/');
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    expect(within(nav).queryAllByRole('link', { current: 'page' })).toHaveLength(0);
+  });
+
+  it('opens an old /?q= search link on the request list', async () => {
+    const { router } = renderRoute('/?q=%20badge%20');
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/requests'));
+    expect(router.state.location.search).toBe('?q=badge');
     expect(await screen.findByRole('heading', { level: 1, name: 'Requests' })).toBeInTheDocument();
   });
 

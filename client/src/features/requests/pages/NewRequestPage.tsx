@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { focusRing, primaryButton, secondaryButton } from '../../../app/styles';
 import { ApiError } from '../api';
 import { useCreateRequest } from '../hooks';
@@ -10,7 +10,7 @@ import {
   type RequestFormErrors,
   type RequestFormField,
 } from '../schemas';
-import { REQUEST_TYPES } from '../types';
+import { isRequestType, REQUEST_TYPES } from '../types';
 
 const FIELD_ORDER: RequestFormField[] = ['title', 'description', 'type'];
 
@@ -56,11 +56,12 @@ function Field({ id, label, hint, error, children }: FieldProps) {
 
 export function NewRequestPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const createRequest = useCreateRequest();
-  const [values, setValues] = useState<Record<RequestFormField, string>>({
-    title: '',
-    description: '',
-    type: '',
+  // ?type= (from the landing page's shortcuts and service cards) preselects a valid type.
+  const [values, setValues] = useState<Record<RequestFormField, string>>(() => {
+    const type = searchParams.get('type');
+    return { title: '', description: '', type: isRequestType(type) ? type : '' };
   });
   const [errors, setErrors] = useState<RequestFormErrors>({});
   const [formError, setFormError] = useState<string | null>(null);

@@ -40,6 +40,21 @@ describe('NewRequestPage', () => {
     expect(screen.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', '/requests');
   });
 
+  it.each(['IT', 'Facilities', 'HR', 'Other'])('preselects the type from ?type=%s', (type) => {
+    stubFetch(() => pendingResponse());
+    renderRoute(`/requests/new?type=${type}`);
+
+    expect(fields().type).toHaveValue(type);
+    expect(fields().title).toHaveValue('');
+  });
+
+  it.each(['bogus', 'it', ''])('ignores an unknown type in the URL (%j)', (type) => {
+    stubFetch(() => pendingResponse());
+    renderRoute(`/requests/new?type=${type}`);
+
+    expect(fields().type).toHaveValue('');
+  });
+
   it('shows required-field errors without calling the API and focuses the first one', async () => {
     const { calls } = stubFetch(() => pendingResponse());
     const { user } = renderRoute('/requests/new');

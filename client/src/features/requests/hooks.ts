@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { requestsApi } from './api';
+import { selectOpenRequests } from './openRequests';
 import type { CreateRequestInput, RequestStatus } from './types';
 
 export const requestKeys = {
@@ -20,6 +21,18 @@ export function useRequests(params: RequestListParams = {}) {
   return useQuery({
     queryKey: requestKeys.list(params),
     queryFn: () => requestsApi.list(params),
+  });
+}
+
+/**
+ * The open requests for the landing page. Reads the same cached list as the request list page
+ * (no search) and selects from it, so both pages share one request and stay in sync.
+ */
+export function useOpenRequests() {
+  return useQuery({
+    queryKey: requestKeys.list(),
+    queryFn: () => requestsApi.list(),
+    select: selectOpenRequests,
   });
 }
 
