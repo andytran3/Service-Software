@@ -11,8 +11,9 @@ Run from the repository root.
 | `npm test`             | All server and client tests (Vitest) |
 | `npm test -w server`   | Server unit and integration tests    |
 | `npm test -w client`   | Client component tests               |
+| `npm run test:e2e`     | Playwright end-to-end tests          |
 | `npm run lint`         | ESLint                               |
-| `npm run typecheck`    | TypeScript in both workspaces        |
+| `npm run typecheck`    | TypeScript in all three workspaces   |
 | `npm run build`        | Production build of both workspaces  |
 | `npm run format:check` | Prettier formatting check            |
 
@@ -23,7 +24,9 @@ npm run db:up
 npm run db:migrate:test
 ```
 
-Run lint, typecheck, test, and build before proposing a commit.
+`npm test` does not run the end-to-end tests; run `npm run test:e2e` separately (see [End-to-end](#end-to-end)).
+
+Run lint, typecheck, test, and build before proposing a commit, and the end-to-end tests when a change affects the UI or the workflow.
 
 ## Test database
 
@@ -76,14 +79,45 @@ Client tests render the real route table with `createMemoryRouter` and a fresh `
 
 ### End-to-end
 
-Not set up yet. Playwright end-to-end tests are planned for a later phase; until then, the workflow is checked manually (below).
+The `e2e` workspace runs Playwright tests in Chromium against the real client, API, and database.
+
+**One-time setup** (downloads Playwright's Chromium into `%LOCALAPPDATA%\ms-playwright` on Windows, or `~/.cache/ms-playwright` elsewhere):
+
+```bash
+npm exec -w e2e -- playwright install chromium
+```
+
+Then, with the database running (`npm run db:up`):
+
+```bash
+npm run test:e2e
+npm run test:e2e -w e2e -- --headed   # watch the browser
+npm run test:e2e -w e2e -- --ui       # Playwright UI mode
+```
+
+**How a run works** (`e2e/playwright.config.ts`):
+
+- Before anything starts, the config checks `DATABASE_URL_TEST` with the same rule as the server tests (`e2e/support/env.ts`): the database name must end in `_test` and differ from `DATABASE_URL`. Otherwise the run stops.
+- Playwright starts its **own** API on port **3100** (with `DATABASE_URL` set to the test database) and its own Vite client on port **5174** (proxying `/api` to 3100). It never reuses a running server: if either port is busy, the run fails rather than testing a server connected to `requests_dev`. `npm run dev` on 3000/5173 can keep running alongside it.
+- Global setup runs `npm run db:migrate:test` (`prisma migrate deploy`; it never resets data).
+- Tests run one at a time in Chromium. Traces, screenshots, and videos are kept only for failures, in `e2e/test-results/`; the HTML report is in `e2e/playwright-report/` (`npm exec -w e2e -- playwright show-report`). Both are gitignored.
+
+**Test data:** each test creates requests with a unique title (`E2E <label> …`) and only looks for its own rows, so the tests do not need an empty table and never delete data. Rows left in `requests_test` are removed the next time the server tests run (they clear the table). **Do not run `npm test` and `npm run test:e2e` at the same time:** both use `requests_test`, and the server tests empty it.
+
+| File                     | Covers                                                                                                                                                                                                                                                                                                                                                                                |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tests/smoke.spec.ts`    | The app loads and `/api/health` reports the database as ok through the proxy                                                                                                                                                                                                                                                                                                          |
+| `tests/requests.spec.ts` | Full workflow: create through the form (title trimmed), see it in the list, open it, change the status, **reload** and confirm it persisted (also checked through the API); newest-first order; browser validation sends no request; "Request not found" for unknown and malformed IDs; list error and recovery with "Try again"; a failed status update leaves the request unchanged |
+| `tests/keyboard.spec.ts` | The skip link is the first stop and moves focus to the main content; creating a request and updating its status with the keyboard only, with a visible focus outline at every stop                                                                                                                                                                                                    |
+
+Most tests use the real API and database. The two error tests make the browser fail one API call (`page.route`) so the UI's error handling can be checked without stopping the API.
 
 ## Manual checks
 
 With `npm run dev` running:
 
 - http://localhost:5173 shows the request list; pressing Tab first focuses "Skip to main content" with a visible focus ring.
-- The request workflow in the browser (writes to `requests_dev`), using only the keyboard if you want to check accessibility:
+- The request workflow in the browser (writes to `requests_dev`), using only the keyboard if you want to check accessibility. `npm run test:e2e` automates these steps against `requests_test`; use them for exploratory checks:
   1. Open **New request** and submit the empty form: all three fields show errors and focus moves to Title.
   2. Fill in the form and submit: the request opens with status `New` and "Request created."
   3. Choose another status and select **Update status**: the status and "Last updated" change and "Status updated to …" appears.
@@ -114,7 +148,7 @@ Tests must cover:
 - Valid and invalid status updates _(covered by the API tests)_
 - Unknown request IDs _(covered by the API tests)_
 - Loading, empty, success, and error UI states _(covered by the client page tests)_
-- The end-to-end workflow: create a request, see it in the list, open it, change its status, reload, and confirm the data persists _(checked manually; automated Playwright tests not yet set up)_
+- The end-to-end workflow: create a request, see it in the list, open it, change its status, reload, and confirm the data persists _(covered by the Playwright tests)_
 
 ## Expectations
 
