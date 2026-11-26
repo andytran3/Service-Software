@@ -1,11 +1,33 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
+import { z } from 'zod';
 
-export interface ErrorBody {
-  error: { code: string; message: string };
+export interface ValidationDetail {
+  path: string;
+  message: string;
 }
 
-function errorBody(code: string, message: string): ErrorBody {
-  return { error: { code, message } };
+export interface ErrorBody {
+  error: { code: string; message: string; details?: ValidationDetail[] };
+}
+
+export function errorBody(code: string, message: string, details?: ValidationDetail[]): ErrorBody {
+  return { error: details ? { code, message, details } : { code, message } };
+}
+
+function formatPath(path: readonly PropertyKey[]): string {
+  return path.map(String).join('.');
+}
+
+/** One detail per field. Zod reports unknown fields as one issue listing every key; split it. */
+function validationDetails(error: z.ZodError): ValidationDetail[] {
+  return error.issues.flatMap((issue) =>
+    issue.code === 'unrecognized_keys'
+      ? issue.keys.map((key) => ({
+          path: formatPath([...issue.path, key]),
+          message: `Unknown field "${key}"`,
+        }))
+      : [{ path: formatPath(issue.path), message: issue.message }],
+  );
 }
 
 /** Errors raised by express.json() carry a `type` such as "entity.parse.failed". */
@@ -24,6 +46,13 @@ export const notFoundHandler: RequestHandler = (_req, res) => {
 export const errorHandler: ErrorRequestHandler = (error, _req, res, next) => {
   if (res.headersSent) {
     next(error);
+    return;
+  }
+
+  if (error instanceof z.ZodError) {
+    res
+      .status(400)
+      .json(errorBody('VALIDATION_ERROR', 'The request is invalid.', validationDetails(error)));
     return;
   }
 

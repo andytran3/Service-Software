@@ -4,7 +4,7 @@ This document describes the architecture **as currently implemented**. Decision 
 
 ## Purpose
 
-An internal request management system where employees create, list, view, and update requests. The foundation is in place; request features are not implemented yet (see [Not yet implemented](#not-yet-implemented)).
+An internal request management system where employees create, list, view, and update requests. The foundation and the requests API are in place; the request pages are not implemented yet (see [Not yet implemented](#not-yet-implemented)).
 
 ## Components
 
@@ -28,28 +28,93 @@ Browser ──► Vite dev server :5173 ──/api/*──► Express :3000 ─�
 
 ## Backend
 
-- `createApp(dependencies)` (`server/src/app.ts`) builds the Express app. Dependencies such as the database check are injected, which keeps the app testable without test-only code.
-- `server/src/server.ts` loads the root `.env`, validates configuration with Zod (`config/env.ts`), creates the Prisma Client, and starts the server. It disconnects from the database on shutdown.
+- `createApp({ checkDatabase, requests })` (`server/src/app.ts`) builds the Express app. Its dependencies (the database check and the requests service) are injected, which keeps the app testable without test-only code.
+- `server/src/server.ts` loads the root `.env`, validates configuration with Zod (`config/env.ts`), creates the Prisma Client and the requests service, and starts the server. It disconnects from the database on shutdown.
 - Middleware order: JSON body parsing (100 kB limit) → routes → JSON 404 handler → central error handler.
+
+### Requests feature
+
+Code lives in `server/src/features/requests/`:
+
+| File         | Responsibility                                                                                |
+| ------------ | --------------------------------------------------------------------------------------------- |
+| `schemas.ts` | Zod schemas for the create body, the status update body, and the `:id` parameter              |
+| `service.ts` | `createRequestsService(prisma)`: create, list, get by ID, update status (receives Prisma)     |
+| `mappers.ts` | Converts Prisma records to the API format (enum labels such as `In Progress`, ISO 8601 dates) |
+| `routes.ts`  | `createRequestsRouter(service)`: validates input, calls the service, sends responses          |
+
+Routes call `schema.parse()`; a validation failure throws a `ZodError`, which Express 5 passes to the central error handler.
 
 ### Implemented endpoints
 
-| Method | Path          | Response                                                                                                                        |
-| ------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/api/health` | `200 {"status":"ok","database":"ok"}` after `SELECT 1`; `503 {"status":"error","database":"unavailable"}` if the database fails |
+| Method | Path                       | Success                                                     | Errors                                            |
+| ------ | -------------------------- | ----------------------------------------------------------- | ------------------------------------------------- |
+| GET    | `/api/health`              | `200 {"status":"ok","database":"ok"}` after `SELECT 1`      | `503 {"status":"error","database":"unavailable"}` |
+| POST   | `/api/requests`            | `201 { data: Request }` with `Location: /api/requests/{id}` | `400 VALIDATION_ERROR`                            |
+| GET    | `/api/requests`            | `200 { data: Request[] }`, newest first; `[]` when empty    | —                                                 |
+| GET    | `/api/requests/:id`        | `200 { data: Request }`                                     | `404 NOT_FOUND`                                   |
+| PATCH  | `/api/requests/:id/status` | `200 { data: Request }`                                     | `400 VALIDATION_ERROR`, `404 NOT_FOUND`           |
+
+A `Request` in responses:
+
+```json
+{
+  "id": "17918d78-824a-4810-af53-4e55b7d4493c",
+  "title": "Replace monitor",
+  "description": "Flickers on startup.",
+  "type": "Facilities",
+  "status": "In Progress",
+  "createdAt": "2026-11-25T02:28:25.223Z",
+  "updatedAt": "2026-11-25T02:28:25.445Z"
+}
+```
+
+The API uses the labels `New`, `In Progress`, `Completed` and `IT`, `Facilities`, `HR`, `Other`. Prisma's enum names (`IN_PROGRESS`, `FACILITIES`, …) are never exposed.
+
+### Validation and business rules
+
+| Input            | Rule                                                                     |
+| ---------------- | ------------------------------------------------------------------------ |
+| `title`          | Required string, trimmed, 1–200 characters                               |
+| `description`    | Required string, trimmed, 1–5000 characters                              |
+| `type`           | One of `IT`, `Facilities`, `HR`, `Other`                                 |
+| `status` (PATCH) | One of `New`, `In Progress`, `Completed`                                 |
+| Unknown fields   | Rejected on create and on status update                                  |
+| `:id`            | Must be a UUID; any other value is treated as an unknown request (`404`) |
+
+- New requests always start as `New`. Clients cannot set `status`, `id`, or timestamps on create; the database default sets the status.
+- Any valid status can change to any other valid status. Every status update sets `updatedAt`.
+- A status update is a single database update. A missing record is detected from Prisma's `P2025` error (no separate lookup, which could race) and returned as `404`.
 
 ### Error responses
 
-All errors use one shape: `{ "error": { "code": string, "message": string } }`.
+All errors use one shape: `{ "error": { "code": string, "message": string, "details"?: [{ "path": string, "message": string }] } }`.
 
-| Situation                 | Status | Code                |
-| ------------------------- | ------ | ------------------- |
-| Unknown route             | 404    | `NOT_FOUND`         |
-| Malformed JSON body       | 400    | `INVALID_JSON`      |
-| Body over 100 kB          | 413    | `PAYLOAD_TOO_LARGE` |
-| Any other unhandled error | 500    | `INTERNAL_ERROR`    |
+| Situation                      | Status | Code                | Message                                  |
+| ------------------------------ | ------ | ------------------- | ---------------------------------------- |
+| Invalid request body           | 400    | `VALIDATION_ERROR`  | `The request is invalid.` (with details) |
+| Malformed JSON body            | 400    | `INVALID_JSON`      | `The request body must be valid JSON.`   |
+| Unknown or non-UUID request ID | 404    | `NOT_FOUND`         | `Request not found.`                     |
+| Unknown route                  | 404    | `NOT_FOUND`         | `The requested resource was not found.`  |
+| Body over 100 kB               | 413    | `PAYLOAD_TOO_LARGE` | `The request body is too large.`         |
+| Any other unhandled error      | 500    | `INTERNAL_ERROR`    | `An unexpected error occurred.`          |
 
-Error details and stack traces are logged on the server only and never returned to clients.
+`details` appears only on `VALIDATION_ERROR`, with one entry per field, for example:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "The request is invalid.",
+    "details": [
+      { "path": "title", "message": "Title is required" },
+      { "path": "status", "message": "Unknown field \"status\"" }
+    ]
+  }
+}
+```
+
+A missing or non-object body produces one detail with an empty `path`. Error details and stack traces are logged on the server only and never returned to clients.
 
 ## Frontend
 
@@ -95,8 +160,9 @@ Both databases run in one PostgreSQL 18 container (Compose project `service-soft
 
 ## Not yet implemented
 
-- Request endpoints: `POST /api/requests`, `GET /api/requests`, `GET /api/requests/:id`, `PATCH /api/requests/:id/status`
-- Request pages: list, create, detail, and status update
+- Request pages: list, create, detail, and status update (the client does not call the requests API yet)
+- Pagination and filtering of the request list
+- Editing fields other than status, and deleting requests
 - Playwright end-to-end tests
 - Production deployment and application containers
 

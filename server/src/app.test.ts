@@ -2,9 +2,11 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createApp } from './app.js';
 import { createDatabaseCheck, createPrismaClient } from './db/prisma.js';
+import { createRequestsService } from './features/requests/service.js';
 import { getTestDatabaseUrl } from './test/test-db.js';
 
 const prisma = createPrismaClient(getTestDatabaseUrl());
+const requests = createRequestsService(prisma);
 
 beforeAll(async () => {
   // Guard: confirm these tests are connected to the isolated test database.
@@ -19,7 +21,7 @@ afterAll(async () => {
 describe('GET /api/health', () => {
   it('returns 200 after running SELECT 1 against the test database', async () => {
     const checkDatabase = vi.fn(createDatabaseCheck(prisma));
-    const app = createApp({ checkDatabase });
+    const app = createApp({ checkDatabase, requests });
 
     const response = await request(app).get('/api/health');
 
@@ -34,6 +36,7 @@ describe('GET /api/health', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     const app = createApp({
       checkDatabase: () => Promise.reject(new Error('connection refused: secret-host')),
+      requests,
     });
 
     const response = await request(app).get('/api/health');
@@ -47,7 +50,7 @@ describe('GET /api/health', () => {
 });
 
 describe('unknown routes and invalid input', () => {
-  const app = createApp({ checkDatabase: () => Promise.resolve() });
+  const app = createApp({ checkDatabase: () => Promise.resolve(), requests });
 
   it('returns a JSON 404 for an unknown API route', async () => {
     const response = await request(app).get('/api/does-not-exist');

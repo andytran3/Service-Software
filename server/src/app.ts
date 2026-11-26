@@ -1,18 +1,22 @@
 import express, { type Express } from 'express';
+import { createRequestsRouter } from './features/requests/routes.js';
+import type { RequestsService } from './features/requests/service.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
 import { createHealthRouter } from './routes/health.js';
 
 export interface AppDependencies {
   checkDatabase: () => Promise<void>;
+  requests: RequestsService;
 }
 
-export function createApp({ checkDatabase }: AppDependencies): Express {
+export function createApp({ checkDatabase, requests }: AppDependencies): Express {
   const app = express();
 
   app.disable('x-powered-by');
   app.use(express.json({ limit: '100kb' }));
 
   app.use('/api/health', createHealthRouter({ checkDatabase }));
+  app.use('/api/requests', createRequestsRouter(requests));
 
   app.use(notFoundHandler);
   app.use(errorHandler);
