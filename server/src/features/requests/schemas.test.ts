@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createRequestSchema,
   DESCRIPTION_MAX_LENGTH,
+  listRequestsQuerySchema,
   REQUEST_STATUSES,
   REQUEST_TYPES,
   requestIdSchema,
@@ -146,5 +147,39 @@ describe('requestIdSchema', () => {
 
   it.each(['123', 'not-a-uuid', '', '7b0e4f7e2c1a4c8e9d3a1f2e3d4c5b6a'])('rejects %j', (id) => {
     expect(requestIdSchema.safeParse(id).success).toBe(false);
+  });
+});
+
+describe('listRequestsQuerySchema', () => {
+  it('accepts no parameters', () => {
+    expect(listRequestsQuerySchema.parse({})).toEqual({ q: undefined });
+  });
+
+  it('trims the search text', () => {
+    expect(listRequestsQuerySchema.parse({ q: '  badge  ' })).toEqual({ q: 'badge' });
+  });
+
+  it.each(['', '   ', '\t\n'])('treats a blank search (%j) as no search', (q) => {
+    expect(listRequestsQuerySchema.parse({ q })).toEqual({ q: undefined });
+  });
+
+  it('accepts 200 characters and rejects 201', () => {
+    expect(listRequestsQuerySchema.safeParse({ q: 'a'.repeat(200) }).success).toBe(true);
+    const result = listRequestsQuerySchema.safeParse({ q: 'a'.repeat(201) });
+    expect(result.error?.issues[0]?.message).toBe('Search must be at most 200 characters');
+  });
+
+  it('rejects a repeated parameter', () => {
+    const result = listRequestsQuerySchema.safeParse({ q: ['a', 'b'] });
+    expect(result.error?.issues[0]?.message).toBe('Search must be a single value');
+  });
+
+  it('rejects unknown parameters with an "Unknown parameter" label', () => {
+    const result = listRequestsQuerySchema.safeParse({ q: 'a', page: '2' });
+    expect(result.error?.issues[0]).toMatchObject({
+      code: 'unrecognized_keys',
+      keys: ['page'],
+      message: 'Unknown parameter',
+    });
   });
 });

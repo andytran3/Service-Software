@@ -8,13 +8,13 @@ An internal web application where employees create, list, view, and update inter
 
 - PostgreSQL in Docker with separate development and test databases, and the `requests` table created by a Prisma migration.
 - An Express API with:
-  - `POST /api/requests`, `GET /api/requests`, `GET /api/requests/:id`, and `PATCH /api/requests/:id/status`, with server-side validation (Zod), consistent `{ data }` / `{ error }` responses, and data stored in PostgreSQL.
+  - `POST /api/requests`, `GET /api/requests`, `GET /api/requests/:id`, and `PATCH /api/requests/:id/status` (the list accepts `?q=` to search titles and descriptions), with server-side validation (Zod), consistent `{ data }` / `{ error }` responses, and data stored in PostgreSQL.
   - A database-backed health check (`GET /api/health`).
 - A React application served by Vite (which proxies `/api` to the API) with:
-  - a request list (`/`), a new request form (`/requests/new`), and a request detail page with a status update (`/requests/:id`);
+  - a request list with search (`/`), a new request form (`/requests/new`), and a request detail page with a status update (`/requests/:id`);
   - loading, empty, success, and error states, browser-side validation that mirrors the server's rules, and keyboard-accessible, labelled controls.
 
-Not yet built: pagination and filtering, editing other fields, deleting requests, authentication, and CI. See the [architecture overview](docs/architecture/overview.md) for details.
+Not yet built: pagination, filtering by status or type, editing other fields, deleting requests, authentication, and CI. See the [architecture overview](docs/architecture/overview.md) for details.
 
 ## Technology
 

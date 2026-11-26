@@ -66,8 +66,10 @@ async function send<T>(path: string, dataSchema: z.ZodType<T>, init?: RequestIni
 }
 
 export const requestsApi = {
-  list(): Promise<InternalRequest[]> {
-    return send(BASE_PATH, z.array(internalRequestSchema));
+  /** All requests, newest first; with `q`, only those whose title or description contains it. */
+  list(params: { q?: string } = {}): Promise<InternalRequest[]> {
+    const query = params.q ? `?${new URLSearchParams({ q: params.q }).toString()}` : '';
+    return send(`${BASE_PATH}${query}`, z.array(internalRequestSchema));
   },
 
   get(id: string): Promise<InternalRequest> {

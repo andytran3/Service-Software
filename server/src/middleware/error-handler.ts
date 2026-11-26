@@ -18,13 +18,22 @@ function formatPath(path: readonly PropertyKey[]): string {
   return path.map(String).join('.');
 }
 
+/**
+ * The label for unknown keys. A schema can set its own (for example "Unknown parameter" for
+ * query strings) through a custom error message starting with "Unknown"; otherwise Zod's
+ * default message is replaced with "Unknown field".
+ */
+function unknownKeyLabel(message: string): string {
+  return message.startsWith('Unknown ') ? message : 'Unknown field';
+}
+
 /** One detail per field. Zod reports unknown fields as one issue listing every key; split it. */
 function validationDetails(error: z.ZodError): ValidationDetail[] {
   return error.issues.flatMap((issue) =>
     issue.code === 'unrecognized_keys'
       ? issue.keys.map((key) => ({
           path: formatPath([...issue.path, key]),
-          message: `Unknown field "${key}"`,
+          message: `${unknownKeyLabel(issue.message)} "${key}"`,
         }))
       : [{ path: formatPath(issue.path), message: issue.message }],
   );

@@ -31,6 +31,22 @@ describe('requestsApi', () => {
     expect(calls).toEqual([{ url: '/api/requests', method: 'GET', body: undefined }]);
   });
 
+  it('sends the search text as an encoded q parameter', async () => {
+    const { calls } = stubFetch(() => jsonResponse(200, { data: [] }));
+
+    await requestsApi.list({ q: '50% & C:\\temp' });
+
+    expect(calls[0]?.url).toBe('/api/requests?q=50%25+%26+C%3A%5Ctemp');
+  });
+
+  it('leaves out q when the search is empty', async () => {
+    const { calls } = stubFetch(() => jsonResponse(200, { data: [] }));
+
+    await requestsApi.list({ q: '' });
+
+    expect(calls[0]?.url).toBe('/api/requests');
+  });
+
   it('gets one request by id', async () => {
     const { calls } = stubFetch(() => jsonResponse(200, { data: sample }));
 

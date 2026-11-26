@@ -202,6 +202,127 @@ describe('GET /api/requests', () => {
   });
 });
 
+describe('GET /api/requests?q= (search)', () => {
+  async function seed(...items: { title: string; description: string }[]) {
+    const created = [];
+    for (const item of items) {
+      created.push(await createViaApi({ ...item, type: 'IT' }));
+    }
+    return created;
+  }
+
+  async function search(query: string) {
+    const response = await request(app).get(`/api/requests?${query}`);
+    expect(response.status).toBe(200);
+    return (response.body.data as { title: string }[]).map((item) => item.title);
+  }
+
+  it('matches the title, ignoring case', async () => {
+    await seed(
+      { title: 'Broken BADGE reader', description: 'East door.' },
+      { title: 'New laptop', description: 'Screen is cracked.' },
+    );
+
+    expect(await search('q=badge')).toEqual(['Broken BADGE reader']);
+  });
+
+  it('matches the description, ignoring case', async () => {
+    await seed(
+      { title: 'Door issue', description: 'The Badge reader rejects cards.' },
+      { title: 'New laptop', description: 'Screen is cracked.' },
+    );
+
+    expect(await search('q=bAdGe')).toEqual(['Door issue']);
+  });
+
+  it('matches the whole phrase as typed, not separate words', async () => {
+    await seed(
+      { title: 'East door badge reader', description: 'x' },
+      { title: 'Badge reader east', description: 'x' },
+    );
+
+    expect(await search(`q=${encodeURIComponent('door badge')}`)).toEqual([
+      'East door badge reader',
+    ]);
+  });
+
+  it('returns several matches newest first', async () => {
+    await seed({ title: 'Printer A jammed', description: 'x' });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    await seed({ title: 'Printer B offline', description: 'x' });
+
+    expect(await search('q=printer')).toEqual(['Printer B offline', 'Printer A jammed']);
+  });
+
+  it('returns an empty list when nothing matches', async () => {
+    await seed({ title: 'New laptop', description: 'x' });
+
+    const response = await request(app).get('/api/requests?q=projector');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ data: [] });
+  });
+
+  it('trims the search text', async () => {
+    await seed({ title: 'New laptop', description: 'x' });
+
+    expect(await search(`q=${encodeURIComponent('  laptop  ')}`)).toEqual(['New laptop']);
+  });
+
+  it.each([
+    ['%', '50% discount code', 'Five hundred'],
+    ['_', 'file_name.txt', 'filename.txt'],
+  ])('treats "%s" literally, not as a wildcard', async (char, matching, other) => {
+    await seed({ title: matching, description: 'x' }, { title: other, description: 'x' });
+
+    const term = char === '%' ? '50%' : 'file_name';
+    expect(await search(`q=${encodeURIComponent(term)}`)).toEqual([matching]);
+  });
+
+  it('treats a backslash literally', async () => {
+    await seed(
+      { title: 'C:\\temp folder', description: 'x' },
+      { title: 'C:temp', description: 'x' },
+    );
+
+    expect(await search(`q=${encodeURIComponent('C:\\temp')}`)).toEqual(['C:\\temp folder']);
+  });
+
+  it.each(['q=', `q=${encodeURIComponent('   ')}`])(
+    'treats a blank search (%s) as no search',
+    async (query) => {
+      await seed({ title: 'One', description: 'x' }, { title: 'Two', description: 'x' });
+
+      expect(await search(query)).toHaveLength(2);
+    },
+  );
+
+  it('rejects a search longer than 200 characters', async () => {
+    const response = await request(app).get(`/api/requests?q=${'a'.repeat(201)}`);
+
+    expect(expectValidationError(response)).toEqual([
+      { path: 'q', message: 'Search must be at most 200 characters' },
+    ]);
+  });
+
+  it('rejects a repeated search parameter', async () => {
+    const response = await request(app).get('/api/requests?q=a&q=b');
+
+    expect(expectValidationError(response)).toEqual([
+      { path: 'q', message: 'Search must be a single value' },
+    ]);
+  });
+
+  it('rejects unknown parameters, one detail each', async () => {
+    const response = await request(app).get('/api/requests?q=a&page=2&sort=title');
+
+    expect(expectValidationError(response)).toEqual([
+      { path: 'page', message: 'Unknown parameter "page"' },
+      { path: 'sort', message: 'Unknown parameter "sort"' },
+    ]);
+  });
+});
+
 describe('GET /api/requests/:id', () => {
   it('returns the request', async () => {
     const created = await createViaApi();

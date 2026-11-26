@@ -125,6 +125,59 @@ test.describe('request workflow', () => {
   });
 });
 
+test.describe('search', () => {
+  /** A unique word (letters and digits only) that no other request contains. */
+  function uniqueWord(title: string): string {
+    return title.replace(/\W+/g, '');
+  }
+
+  test('finds requests by title or description, keeps the search after a reload, and clears it', async ({
+    page,
+  }, testInfo) => {
+    const word = uniqueWord(uniqueTitle(testInfo, 'search'));
+    const byTitle = `Printer ${word} jammed`;
+    const byDescription = uniqueTitle(testInfo, 'search description');
+    const unrelated = uniqueTitle(testInfo, 'search unrelated');
+    await createRequestViaForm(page, { title: byTitle, description: 'Tray 2.', type: 'IT' });
+    await createRequestViaForm(page, {
+      title: byDescription,
+      description: `Mentions ${word.toUpperCase()} in the text.`,
+      type: 'Facilities',
+    });
+    await createRequestViaForm(page, { title: unrelated, description: 'x', type: 'HR' });
+
+    await page.goto('/');
+    const searchBox = page.getByRole('searchbox', { name: 'Search requests' });
+    await searchBox.fill(word);
+    await searchBox.press('Enter');
+
+    await expect(page).toHaveURL(`/?q=${word}`);
+    await expect(page.getByRole('status')).toHaveText(`2 requests match “${word}”`);
+    await expect(rowFor(page, byTitle)).toHaveCount(1);
+    await expect(rowFor(page, byDescription)).toHaveCount(1);
+    await expect(rowFor(page, unrelated)).toHaveCount(0);
+
+    await page.reload();
+    await expect(searchBox).toHaveValue(word);
+    await expect(page.getByRole('status')).toHaveText(`2 requests match “${word}”`);
+    await expect(rowFor(page, unrelated)).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Clear search' }).click();
+    await expect(page).toHaveURL('/');
+    await expect(searchBox).toBeFocused();
+    await expect(rowFor(page, unrelated)).toHaveCount(1);
+  });
+
+  test('shows a no-results state', async ({ page }, testInfo) => {
+    const word = uniqueWord(uniqueTitle(testInfo, 'no match'));
+
+    await page.goto(`/?q=${word}`);
+
+    await expect(page.getByText(`No requests match “${word}”.`)).toBeVisible();
+    await expect(page.getByRole('status')).toHaveText(`0 requests match “${word}”`);
+  });
+});
+
 test.describe('validation and errors', () => {
   test('validates the form in the browser without sending a request', async ({ page }) => {
     const posts: string[] = [];

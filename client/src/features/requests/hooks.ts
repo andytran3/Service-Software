@@ -4,12 +4,23 @@ import type { CreateRequestInput, RequestStatus } from './types';
 
 export const requestKeys = {
   all: ['requests'] as const,
-  list: () => [...requestKeys.all, 'list'] as const,
+  /** Prefix of every list query, used to refresh all of them after a change. */
+  lists: () => [...requestKeys.all, 'list'] as const,
+  list: (params: RequestListParams = {}) =>
+    [...requestKeys.lists(), { q: params.q ?? '' }] as const,
   detail: (id: string) => [...requestKeys.all, 'detail', id] as const,
 };
 
-export function useRequests() {
-  return useQuery({ queryKey: requestKeys.list(), queryFn: requestsApi.list });
+export interface RequestListParams {
+  /** Search text; omitted or empty means every request. */
+  q?: string;
+}
+
+export function useRequests(params: RequestListParams = {}) {
+  return useQuery({
+    queryKey: requestKeys.list(params),
+    queryFn: () => requestsApi.list(params),
+  });
 }
 
 export function useRequest(id: string) {
@@ -22,7 +33,7 @@ export function useCreateRequest() {
     mutationFn: (input: CreateRequestInput) => requestsApi.create(input),
     onSuccess: async (created) => {
       queryClient.setQueryData(requestKeys.detail(created.id), created);
-      await queryClient.invalidateQueries({ queryKey: requestKeys.list() });
+      await queryClient.invalidateQueries({ queryKey: requestKeys.lists() });
     },
   });
 }
@@ -33,7 +44,7 @@ export function useUpdateRequestStatus(id: string) {
     mutationFn: (status: RequestStatus) => requestsApi.updateStatus(id, status),
     onSuccess: async (updated) => {
       queryClient.setQueryData(requestKeys.detail(id), updated);
-      await queryClient.invalidateQueries({ queryKey: requestKeys.list() });
+      await queryClient.invalidateQueries({ queryKey: requestKeys.lists() });
     },
   });
 }

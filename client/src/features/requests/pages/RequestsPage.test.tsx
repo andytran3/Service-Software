@@ -123,3 +123,136 @@ describe('RequestsPage', () => {
     );
   });
 });
+
+describe('RequestsPage search', () => {
+  /** Answers list requests: everything without q, or titles containing q (any case). */
+  function stubSearchableList() {
+    return stubFetch((call) => {
+      const q = new URL(call.url, 'http://localhost').searchParams.get('q');
+      const data = q
+        ? [newer, older].filter((item) => item.title.toLowerCase().includes(q.toLowerCase()))
+        : [newer, older];
+      return jsonResponse(200, { data });
+    });
+  }
+
+  it('has a labelled search box with a hint', async () => {
+    stubSearchableList();
+    renderRoute('/');
+
+    const search = screen.getByRole('searchbox', { name: 'Search requests' });
+    expect(search).toHaveAccessibleDescription('Searches titles and descriptions.');
+    expect(screen.getByRole('search')).toContainElement(search);
+    expect(screen.queryByRole('button', { name: 'Clear search' })).not.toBeInTheDocument();
+  });
+
+  it('searches on submit, keeps the text in the URL, and announces the result count', async () => {
+    const { calls } = stubSearchableList();
+    const { user, router } = renderRoute('/');
+    await screen.findByRole('link', { name: 'Onboard new hire' });
+
+    await user.type(screen.getByRole('searchbox', { name: 'Search requests' }), '  monitor  ');
+    expect(calls).toHaveLength(1); // typing alone does not search
+    await user.click(screen.getByRole('button', { name: 'Search' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent('1 request matches “monitor”');
+    expect(router.state.location.search).toBe('?q=monitor');
+    expect(calls.at(-1)?.url).toBe('/api/requests?q=monitor');
+    expect(screen.getByRole('link', { name: 'Replace monitor' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Onboard new hire' })).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('table', { name: 'Requests matching “monitor”, newest first' }),
+    ).toBeInTheDocument();
+  });
+
+  it('runs the search from the URL when the page opens', async () => {
+    const { calls } = stubSearchableList();
+    renderRoute('/?q=onboard');
+
+    expect(await screen.findByRole('link', { name: 'Onboard new hire' })).toBeInTheDocument();
+    expect(screen.getByRole('searchbox', { name: 'Search requests' })).toHaveValue('onboard');
+    expect(calls[0]?.url).toBe('/api/requests?q=onboard');
+    expect(screen.getByRole('status')).toHaveTextContent('1 request matches “onboard”');
+  });
+
+  it('shows a no-results state and clears the search', async () => {
+    stubSearchableList();
+    const { user, router } = renderRoute('/?q=projector');
+
+    expect(await screen.findByText('No requests match “projector”.')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('0 requests match “projector”');
+    expect(screen.queryByText('No requests yet')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Clear search' }));
+
+    expect(await screen.findByRole('link', { name: 'Onboard new hire' })).toBeInTheDocument();
+    expect(router.state.location.search).toBe('');
+    const search = screen.getByRole('searchbox', { name: 'Search requests' });
+    expect(search).toHaveValue('');
+    expect(search).toHaveFocus();
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+  });
+
+  it('clears the search when a blank search is submitted', async () => {
+    const { calls } = stubSearchableList();
+    const { user, router } = renderRoute('/?q=monitor');
+    await screen.findByRole('link', { name: 'Replace monitor' });
+
+    const search = screen.getByRole('searchbox', { name: 'Search requests' });
+    await user.clear(search);
+    await user.type(search, '   {Enter}');
+
+    expect(await screen.findByRole('link', { name: 'Onboard new hire' })).toBeInTheDocument();
+    expect(router.state.location.search).toBe('');
+    expect(calls.at(-1)?.url).toBe('/api/requests');
+  });
+
+  it('treats a blank q in the URL as no search', async () => {
+    const { calls } = stubSearchableList();
+    renderRoute('/?q=%20%20');
+
+    expect(await screen.findByRole('link', { name: 'Onboard new hire' })).toBeInTheDocument();
+    expect(calls[0]?.url).toBe('/api/requests');
+    expect(screen.queryByRole('button', { name: 'Clear search' })).not.toBeInTheDocument();
+  });
+
+  it('rejects a search longer than 200 characters without calling the API', async () => {
+    const { calls } = stubSearchableList();
+    const { user, router } = renderRoute('/');
+    await screen.findByRole('link', { name: 'Onboard new hire' });
+
+    const search = screen.getByRole('searchbox', { name: 'Search requests' });
+    await user.click(search);
+    await user.paste('a'.repeat(201));
+    await user.click(screen.getByRole('button', { name: 'Search' }));
+
+    expect(search).toHaveAttribute('aria-invalid', 'true');
+    expect(search).toHaveAccessibleDescription(
+      'Searches titles and descriptions. Search must be at most 200 characters',
+    );
+    expect(search).toHaveFocus();
+    expect(router.state.location.search).toBe('');
+    expect(calls).toHaveLength(1);
+  });
+
+  it('retries the current search with "Try again"', async () => {
+    let attempts = 0;
+    const { calls } = stubFetch(() => {
+      attempts += 1;
+      return attempts === 1
+        ? jsonResponse(500, {
+            error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred.' },
+          })
+        : jsonResponse(200, { data: [older] });
+    });
+    const { user } = renderRoute('/?q=monitor');
+
+    await user.click(await screen.findByRole('button', { name: 'Try again' }));
+
+    expect(await screen.findByRole('link', { name: 'Replace monitor' })).toBeInTheDocument();
+    expect(calls.map((call) => call.url)).toEqual([
+      '/api/requests?q=monitor',
+      '/api/requests?q=monitor',
+    ]);
+  });
+});
