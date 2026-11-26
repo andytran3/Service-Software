@@ -25,7 +25,7 @@ async function tabTo(page: Page, target: Locator, maxStops = 20): Promise<void> 
 }
 
 test('the skip link is the first stop and moves focus to the main content', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/requests');
 
   await page.keyboard.press('Tab');
   const skipLink = page.getByRole('link', { name: 'Skip to main content' });
@@ -40,7 +40,7 @@ test('create a request and update its status using only the keyboard', async ({
   page,
 }, testInfo) => {
   const title = uniqueTitle(testInfo, 'keyboard');
-  await page.goto('/');
+  await page.goto('/requests');
 
   // Header navigation to the form.
   await tabTo(

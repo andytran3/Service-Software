@@ -1,7 +1,27 @@
-import { Link, NavLink, Outlet } from 'react-router';
+import { Link, Outlet, useMatch } from 'react-router';
 import { focusRing } from './styles';
 
+function navLinkClass(active: boolean): string {
+  return `rounded px-2 py-1 ${active ? 'font-semibold text-brand-700' : 'text-gray-700'} ${focusRing}`;
+}
+
+/**
+ * Which nav link is current. "Requests" covers the list and a request's detail page, but not
+ * the new-request form, which has its own link (a plain NavLink would mark both).
+ */
+function useCurrentNav() {
+  const onList = useMatch('/requests');
+  const onRequest = useMatch('/requests/:id');
+  const onNewRequest = useMatch('/requests/new');
+  return {
+    requests: Boolean(onList || (onRequest && !onNewRequest)),
+    newRequest: Boolean(onNewRequest),
+  };
+}
+
 export function Layout() {
+  const current = useCurrentNav();
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <a
@@ -19,25 +39,22 @@ export function Layout() {
           <nav aria-label="Main">
             <ul className="flex gap-4">
               <li>
-                <NavLink
-                  to="/"
-                  end
-                  className={({ isActive }) =>
-                    `rounded px-2 py-1 ${isActive ? 'font-semibold text-brand-700' : 'text-gray-700'} ${focusRing}`
-                  }
+                <Link
+                  to="/requests"
+                  aria-current={current.requests ? 'page' : undefined}
+                  className={navLinkClass(current.requests)}
                 >
                   Requests
-                </NavLink>
+                </Link>
               </li>
               <li>
-                <NavLink
+                <Link
                   to="/requests/new"
-                  className={({ isActive }) =>
-                    `rounded px-2 py-1 ${isActive ? 'font-semibold text-brand-700' : 'text-gray-700'} ${focusRing}`
-                  }
+                  aria-current={current.newRequest ? 'page' : undefined}
+                  className={navLinkClass(current.newRequest)}
                 >
                   New request
-                </NavLink>
+                </Link>
               </li>
             </ul>
           </nav>

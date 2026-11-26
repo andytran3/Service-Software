@@ -15,7 +15,7 @@ test.describe('request workflow', () => {
     const title = uniqueTitle(testInfo, 'workflow');
 
     // Create through the form, starting from the list page.
-    await page.goto('/');
+    await page.goto('/requests');
     await page.getByRole('main').getByRole('link', { name: 'New request' }).click();
     await expect(page).toHaveURL(/\/requests\/new$/);
     await page.getByRole('textbox', { name: 'Title' }).fill(`  ${title}  `);
@@ -36,7 +36,7 @@ test.describe('request workflow', () => {
 
     // It appears in the list.
     await page.getByRole('link', { name: '← Back to requests' }).click();
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/requests$/);
     const row = rowFor(page, title);
     await expect(row).toHaveCount(1);
     await expect(row).toContainText('Facilities');
@@ -107,7 +107,7 @@ test.describe('request workflow', () => {
     const stored = await request.get(`/api/requests/${id}`);
     expect(await stored.json()).toMatchObject({ data: { status: 'Needs your reply' } });
 
-    await page.goto('/');
+    await page.goto('/requests');
     await expect(rowFor(page, title)).toContainText('Needs your reply');
   });
 
@@ -117,7 +117,7 @@ test.describe('request workflow', () => {
     await createRequestViaForm(page, { title: older, description: 'First.', type: 'IT' });
     await createRequestViaForm(page, { title: newer, description: 'Second.', type: 'HR' });
 
-    await page.goto('/');
+    await page.goto('/requests');
 
     const titles = await page.getByRole('row').locator('td:first-child').allTextContents();
     expect(titles.indexOf(newer)).toBeGreaterThanOrEqual(0);
@@ -146,12 +146,12 @@ test.describe('search', () => {
     });
     await createRequestViaForm(page, { title: unrelated, description: 'x', type: 'HR' });
 
-    await page.goto('/');
+    await page.goto('/requests');
     const searchBox = page.getByRole('searchbox', { name: 'Search requests' });
     await searchBox.fill(word);
     await searchBox.press('Enter');
 
-    await expect(page).toHaveURL(`/?q=${word}`);
+    await expect(page).toHaveURL(`/requests?q=${word}`);
     await expect(page.getByRole('status')).toHaveText(`2 requests match “${word}”`);
     await expect(rowFor(page, byTitle)).toHaveCount(1);
     await expect(rowFor(page, byDescription)).toHaveCount(1);
@@ -163,7 +163,7 @@ test.describe('search', () => {
     await expect(rowFor(page, unrelated)).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Clear search' }).click();
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL('/requests');
     await expect(searchBox).toBeFocused();
     await expect(rowFor(page, unrelated)).toHaveCount(1);
   });
@@ -171,10 +171,25 @@ test.describe('search', () => {
   test('shows a no-results state', async ({ page }, testInfo) => {
     const word = uniqueWord(uniqueTitle(testInfo, 'no match'));
 
-    await page.goto(`/?q=${word}`);
+    await page.goto(`/requests?q=${word}`);
 
     await expect(page.getByText(`No requests match “${word}”.`)).toBeVisible();
     await expect(page.getByRole('status')).toHaveText(`0 requests match “${word}”`);
+  });
+
+  test('an old /?q= link opens the same search on /requests', async ({ page }, testInfo) => {
+    const word = uniqueWord(uniqueTitle(testInfo, 'old link'));
+    await page.goto('/requests/new');
+
+    await page.goto(`/?q=${word}`);
+
+    await expect(page).toHaveURL(`/requests?q=${word}`);
+    await expect(page.getByRole('searchbox', { name: 'Search requests' })).toHaveValue(word);
+
+    // The redirect replaces the history entry, so Back returns to the previous page
+    // instead of landing on / and being redirected forward again.
+    await page.goBack();
+    await expect(page).toHaveURL('/requests/new');
   });
 });
 
@@ -220,7 +235,7 @@ test.describe('validation and errors', () => {
     page,
   }) => {
     await page.route('**/api/requests', (route) => route.abort('connectionrefused'));
-    await page.goto('/');
+    await page.goto('/requests');
 
     const alert = page.getByRole('alert');
     await expect(alert).toContainText('Could not load requests.');

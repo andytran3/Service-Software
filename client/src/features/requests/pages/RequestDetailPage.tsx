@@ -21,7 +21,7 @@ function wasJustCreated(state: unknown): boolean {
 
 function BackLink() {
   return (
-    <Link to="/" className={`text-sm ${textLink}`}>
+    <Link to="/requests" className={`text-sm ${textLink}`}>
       ← Back to requests
     </Link>
   );

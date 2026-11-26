@@ -1,4 +1,4 @@
-import { Link, type RouteObject } from 'react-router';
+import { Link, replace, type LoaderFunctionArgs, type RouteObject } from 'react-router';
 import { NewRequestPage } from '../features/requests/pages/NewRequestPage';
 import { RequestDetailPage } from '../features/requests/pages/RequestDetailPage';
 import { RequestsPage } from '../features/requests/pages/RequestsPage';
@@ -12,7 +12,7 @@ function NotFoundPage() {
         Page not found
       </h1>
       <p className="mt-2">
-        <Link to="/" className={textLink}>
+        <Link to="/requests" className={textLink}>
           Go to requests
         </Link>
       </p>
@@ -20,12 +20,19 @@ function NotFoundPage() {
   );
 }
 
+/** Until the landing page exists, / sends visitors (and any ?q= search) to the request list. */
+function redirectToRequests({ request }: LoaderFunctionArgs) {
+  // replace (not redirect) so the back button does not return to / and bounce forward again.
+  return replace(`/requests${new URL(request.url).search}`);
+}
+
 export const routes: RouteObject[] = [
   {
     path: '/',
     Component: Layout,
     children: [
-      { index: true, Component: RequestsPage },
+      { index: true, loader: redirectToRequests },
+      { path: 'requests', Component: RequestsPage },
       { path: 'requests/new', Component: NewRequestPage },
       { path: 'requests/:id', Component: RequestDetailPage },
       { path: '*', Component: NotFoundPage },

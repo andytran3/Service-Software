@@ -53,7 +53,10 @@ describe('RequestDetailPage', () => {
       'dateTime',
       request.updatedAt,
     );
-    expect(screen.getByRole('link', { name: '← Back to requests' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: '← Back to requests' })).toHaveAttribute(
+      'href',
+      '/requests',
+    );
   });
 
   it('shows "Request not found" for a 404 without retrying', async () => {
@@ -64,7 +67,10 @@ describe('RequestDetailPage', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Request not found' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '← Back to requests' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: '← Back to requests' })).toHaveAttribute(
+      'href',
+      '/requests',
+    );
     expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
     expect(calls).toHaveLength(1);
   });

@@ -28,7 +28,7 @@ describe('RequestsPage', () => {
   it('requests the list from the API and shows a loading state', async () => {
     const { calls } = stubFetch(() => pendingResponse());
 
-    renderRoute('/');
+    renderRoute('/requests');
 
     expect(await screen.findByRole('status')).toHaveTextContent('Loading requests…');
     expect(calls[0]).toMatchObject({ url: '/api/requests', method: 'GET' });
@@ -37,7 +37,7 @@ describe('RequestsPage', () => {
   it('links to the new request page from the heading area', async () => {
     stubFetch(() => jsonResponse(200, { data: [] }));
 
-    renderRoute('/');
+    renderRoute('/requests');
 
     const main = screen.getByRole('main');
     expect(within(main).getByRole('link', { name: 'New request' })).toHaveAttribute(
@@ -49,7 +49,7 @@ describe('RequestsPage', () => {
   it('shows an empty state with a link to create a request', async () => {
     stubFetch(() => jsonResponse(200, { data: [] }));
 
-    renderRoute('/');
+    renderRoute('/requests');
 
     expect(await screen.findByText('No requests yet')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Create a request' })).toHaveAttribute(
@@ -62,7 +62,7 @@ describe('RequestsPage', () => {
   it('shows requests in a table in the order returned by the API (newest first)', async () => {
     stubFetch(() => jsonResponse(200, { data: [newer, older] }));
 
-    renderRoute('/');
+    renderRoute('/requests');
 
     const table = await screen.findByRole('table', { name: 'All requests, newest first' });
     const headers = within(table)
@@ -100,7 +100,7 @@ describe('RequestsPage', () => {
           })
         : jsonResponse(200, { data: [older] });
     });
-    const { user } = renderRoute('/');
+    const { user } = renderRoute('/requests');
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Could not load requests.');
@@ -116,7 +116,7 @@ describe('RequestsPage', () => {
   it('explains when the server cannot be reached', async () => {
     stubFetch(() => Promise.reject(new TypeError('Failed to fetch')));
 
-    renderRoute('/');
+    renderRoute('/requests');
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Could not reach the server. Check your connection and try again.',
@@ -138,7 +138,7 @@ describe('RequestsPage search', () => {
 
   it('has a labelled search box with a hint', async () => {
     stubSearchableList();
-    renderRoute('/');
+    renderRoute('/requests');
 
     const search = screen.getByRole('searchbox', { name: 'Search requests' });
     expect(search).toHaveAccessibleDescription('Searches titles and descriptions.');
@@ -148,7 +148,7 @@ describe('RequestsPage search', () => {
 
   it('searches on submit, keeps the text in the URL, and announces the result count', async () => {
     const { calls } = stubSearchableList();
-    const { user, router } = renderRoute('/');
+    const { user, router } = renderRoute('/requests');
     await screen.findByRole('link', { name: 'Onboard new hire' });
 
     await user.type(screen.getByRole('searchbox', { name: 'Search requests' }), '  monitor  ');
@@ -167,7 +167,7 @@ describe('RequestsPage search', () => {
 
   it('runs the search from the URL when the page opens', async () => {
     const { calls } = stubSearchableList();
-    renderRoute('/?q=onboard');
+    renderRoute('/requests?q=onboard');
 
     expect(await screen.findByRole('link', { name: 'Onboard new hire' })).toBeInTheDocument();
     expect(screen.getByRole('searchbox', { name: 'Search requests' })).toHaveValue('onboard');
@@ -177,7 +177,7 @@ describe('RequestsPage search', () => {
 
   it('shows a no-results state and clears the search', async () => {
     stubSearchableList();
-    const { user, router } = renderRoute('/?q=projector');
+    const { user, router } = renderRoute('/requests?q=projector');
 
     expect(await screen.findByText('No requests match “projector”.')).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent('0 requests match “projector”');
@@ -195,7 +195,7 @@ describe('RequestsPage search', () => {
 
   it('clears the search when a blank search is submitted', async () => {
     const { calls } = stubSearchableList();
-    const { user, router } = renderRoute('/?q=monitor');
+    const { user, router } = renderRoute('/requests?q=monitor');
     await screen.findByRole('link', { name: 'Replace monitor' });
 
     const search = screen.getByRole('searchbox', { name: 'Search requests' });
@@ -209,7 +209,7 @@ describe('RequestsPage search', () => {
 
   it('treats a blank q in the URL as no search', async () => {
     const { calls } = stubSearchableList();
-    renderRoute('/?q=%20%20');
+    renderRoute('/requests?q=%20%20');
 
     expect(await screen.findByRole('link', { name: 'Onboard new hire' })).toBeInTheDocument();
     expect(calls[0]?.url).toBe('/api/requests');
@@ -218,7 +218,7 @@ describe('RequestsPage search', () => {
 
   it('rejects a search longer than 200 characters without calling the API', async () => {
     const { calls } = stubSearchableList();
-    const { user, router } = renderRoute('/');
+    const { user, router } = renderRoute('/requests');
     await screen.findByRole('link', { name: 'Onboard new hire' });
 
     const search = screen.getByRole('searchbox', { name: 'Search requests' });
@@ -245,7 +245,7 @@ describe('RequestsPage search', () => {
           })
         : jsonResponse(200, { data: [older] });
     });
-    const { user } = renderRoute('/?q=monitor');
+    const { user } = renderRoute('/requests?q=monitor');
 
     await user.click(await screen.findByRole('button', { name: 'Try again' }));
 

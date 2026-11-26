@@ -211,7 +211,7 @@ export function NewRequestPage() {
           <button type="submit" disabled={createRequest.isPending} className={primaryButton}>
             {createRequest.isPending ? 'Creating…' : 'Create request'}
           </button>
-          <Link to="/" className={secondaryButton}>
+          <Link to="/requests" className={secondaryButton}>
             Cancel
           </Link>
         </div>

@@ -37,7 +37,7 @@ describe('NewRequestPage', () => {
         .getAllByRole('option')
         .map((option) => option.textContent),
     ).toEqual(['Select a type', 'IT', 'Facilities', 'HR', 'Other']);
-    expect(screen.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', '/requests');
   });
 
   it('shows required-field errors without calling the API and focuses the first one', async () => {
