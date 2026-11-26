@@ -4,9 +4,12 @@ import { createRoot } from 'react-dom/client';
 import { createBrowserRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { routes } from './app/router';
+import { shouldRetry } from './features/requests/api';
 import './index.css';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: shouldRetry } },
+});
 const router = createBrowserRouter(routes);
 
 const rootElement = document.getElementById('root');

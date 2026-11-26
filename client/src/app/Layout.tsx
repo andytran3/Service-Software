@@ -1,7 +1,5 @@
 import { Link, NavLink, Outlet } from 'react-router';
-
-const focusRing =
-  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600';
+import { focusRing } from './styles';
 
 export function Layout() {
   return (
@@ -29,6 +27,16 @@ export function Layout() {
                   }
                 >
                   Requests
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/requests/new"
+                  className={({ isActive }) =>
+                    `rounded px-2 py-1 ${isActive ? 'font-semibold text-blue-700' : 'text-gray-700'} ${focusRing}`
+                  }
+                >
+                  New request
                 </NavLink>
               </li>
             </ul>

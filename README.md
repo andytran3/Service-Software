@@ -1,18 +1,20 @@
 # Internal Request Management System
 
-An internal web application where employees will create, list, view, and update internal requests.
+An internal web application where employees create, list, view, and update internal requests.
 
 ## Current status
 
-**Phase 2 — requests API.** The backend is complete for the core workflow; the request pages are not built yet.
+**Phase 3 — request pages.** The core workflow works end to end in the browser: create a request, see it in the list, open it, and change its status. Data persists in PostgreSQL across reloads and restarts.
 
 - PostgreSQL in Docker with separate development and test databases, and the `requests` table created by a Prisma migration.
 - An Express API with:
   - `POST /api/requests`, `GET /api/requests`, `GET /api/requests/:id`, and `PATCH /api/requests/:id/status`, with server-side validation (Zod), consistent `{ data }` / `{ error }` responses, and data stored in PostgreSQL.
   - A database-backed health check (`GET /api/health`).
-- A React application shell (header, navigation, placeholder page) served by Vite, which proxies `/api` to the API.
+- A React application served by Vite (which proxies `/api` to the API) with:
+  - a request list (`/`), a new request form (`/requests/new`), and a request detail page with a status update (`/requests/:id`);
+  - loading, empty, success, and error states, browser-side validation that mirrors the server's rules, and keyboard-accessible, labelled controls.
 
-The request pages (list, create, detail, status update) are **not implemented yet**; the UI does not call the requests API. See the [architecture overview](docs/architecture/overview.md#implemented-endpoints) for the API details.
+Not yet built: pagination and filtering, editing other fields, deleting requests, authentication, and Playwright end-to-end tests. See the [architecture overview](docs/architecture/overview.md) for details.
 
 ## Technology
 
