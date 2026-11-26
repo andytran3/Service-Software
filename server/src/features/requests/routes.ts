@@ -1,6 +1,11 @@
 import { Router, type Response } from 'express';
 import { errorBody } from '../../middleware/error-handler.js';
-import { createRequestSchema, requestIdSchema, updateStatusSchema } from './schemas.js';
+import {
+  createRequestSchema,
+  listRequestsQuerySchema,
+  requestIdSchema,
+  updateStatusSchema,
+} from './schemas.js';
 import type { RequestsService } from './service.js';
 
 function sendNotFound(res: Response): void {
@@ -20,8 +25,9 @@ export function createRequestsRouter(service: RequestsService): Router {
     res.status(201).location(`${req.baseUrl}/${created.id}`).json({ data: created });
   });
 
-  router.get('/', async (_req, res) => {
-    res.status(200).json({ data: await service.list() });
+  router.get('/', async (req, res) => {
+    const query = listRequestsQuerySchema.parse(req.query);
+    res.status(200).json({ data: await service.list(query) });
   });
 
   router.get('/:id', async (req, res) => {

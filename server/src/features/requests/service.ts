@@ -1,10 +1,11 @@
 import { Prisma, type PrismaClient } from '../../generated/prisma/client.js';
 import { toPrismaStatus, toPrismaType, toRequestDto, type RequestDto } from './mappers.js';
-import type { CreateRequestInput, RequestStatusLabel } from './schemas.js';
+import type { CreateRequestInput, ListRequestsQuery, RequestStatusLabel } from './schemas.js';
 
 export interface RequestsService {
   create(input: CreateRequestInput): Promise<RequestDto>;
-  list(): Promise<RequestDto[]>;
+  /** Newest first. With `q`, only requests whose title or description contains it (any case). */
+  list(query?: Partial<ListRequestsQuery>): Promise<RequestDto[]>;
   /** Returns null when no request has this id. */
   getById(id: string): Promise<RequestDto | null>;
   /** Returns null when no request has this id. */
@@ -26,8 +27,19 @@ export function createRequestsService(prisma: PrismaClient): RequestsService {
       return toRequestDto(record);
     },
 
-    async list() {
+    async list({ q } = {}) {
+      // Prisma escapes % and _ in `contains`, but not the backslash, which PostgreSQL LIKE
+      // treats as its escape character. Doubling it makes every character match literally.
+      const term = q?.replaceAll('\\', '\\\\');
       const records = await prisma.request.findMany({
+        where: term
+          ? {
+              OR: [
+                { title: { contains: term, mode: 'insensitive' } },
+                { description: { contains: term, mode: 'insensitive' } },
+              ],
+            }
+          : undefined,
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       });
       return records.map(toRequestDto);

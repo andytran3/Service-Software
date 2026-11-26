@@ -41,8 +41,27 @@ export const updateStatusSchema = z.strictObject({
   }),
 });
 
+export const SEARCH_MAX_LENGTH = 200;
+
+/**
+ * Query string of GET /api/requests. `q` is trimmed; a blank value means "no search".
+ * A repeated parameter arrives as an array and is rejected. Unknown parameters are rejected.
+ */
+export const listRequestsQuerySchema = z.strictObject(
+  {
+    q: z
+      .string({ error: 'Search must be a single value' })
+      .trim()
+      .max(SEARCH_MAX_LENGTH, `Search must be at most ${SEARCH_MAX_LENGTH} characters`)
+      .optional()
+      .transform((value) => (value ? value : undefined)),
+  },
+  { error: (issue) => (issue.code === 'unrecognized_keys' ? 'Unknown parameter' : undefined) },
+);
+
 /** Route parameter :id. A value that fails this check is treated as an unknown request (404). */
 export const requestIdSchema = z.uuid();
 
 export type CreateRequestInput = z.infer<typeof createRequestSchema>;
 export type UpdateStatusInput = z.infer<typeof updateStatusSchema>;
+export type ListRequestsQuery = z.infer<typeof listRequestsQuerySchema>;
