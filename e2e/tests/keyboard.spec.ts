@@ -73,7 +73,8 @@ test('create a request and update its status using only the keyboard', async ({
   // Change the status.
   const statusField = page.getByRole('combobox', { name: 'Status' });
   await tabTo(page, statusField);
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown'); // Awaiting approval
+  await page.keyboard.press('ArrowDown'); // In Progress
   await expect(statusField).toHaveValue('In Progress');
   await page.keyboard.press('Tab');
   await expect(page.getByRole('button', { name: 'Update status' })).toBeFocused();

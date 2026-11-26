@@ -76,6 +76,41 @@ test.describe('request workflow', () => {
     await expect(rowFor(page, title)).toContainText('In Progress');
   });
 
+  test('moves through the new statuses and keeps them after a reload', async ({
+    page,
+    request,
+  }, testInfo) => {
+    const title = uniqueTitle(testInfo, 'new statuses');
+    const id = await createRequestViaForm(page, { title, description: 'x', type: 'IT' });
+    const statusField = page.getByRole('combobox', { name: 'Status' });
+    const updateButton = page.getByRole('button', { name: 'Update status' });
+
+    await expect(statusField.locator('option')).toHaveText([
+      'New',
+      'Awaiting approval',
+      'In Progress',
+      'Needs your reply',
+      'Completed',
+    ]);
+
+    await statusField.selectOption('Awaiting approval');
+    await updateButton.click();
+    await expect(page.getByRole('status')).toHaveText('Status updated to Awaiting approval.');
+    await expect(detailValue(page, 'Status')).toHaveText('Awaiting approval');
+
+    await statusField.selectOption('Needs your reply');
+    await updateButton.click();
+    await expect(page.getByRole('status')).toHaveText('Status updated to Needs your reply.');
+
+    await page.reload();
+    await expect(detailValue(page, 'Status')).toHaveText('Needs your reply');
+    const stored = await request.get(`/api/requests/${id}`);
+    expect(await stored.json()).toMatchObject({ data: { status: 'Needs your reply' } });
+
+    await page.goto('/');
+    await expect(rowFor(page, title)).toContainText('Needs your reply');
+  });
+
   test('lists newer requests first', async ({ page }, testInfo) => {
     const older = uniqueTitle(testInfo, 'older');
     const newer = uniqueTitle(testInfo, 'newer');

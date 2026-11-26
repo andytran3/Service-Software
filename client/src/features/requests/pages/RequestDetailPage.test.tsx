@@ -101,7 +101,7 @@ describe('RequestDetailPage', () => {
       within(select)
         .getAllByRole('option')
         .map((option) => option.textContent),
-    ).toEqual(['New', 'In Progress', 'Completed']);
+    ).toEqual(['New', 'Awaiting approval', 'In Progress', 'Needs your reply', 'Completed']);
     expect(button).toBeDisabled();
 
     await user.selectOptions(select, 'In Progress');
@@ -143,6 +143,37 @@ describe('RequestDetailPage', () => {
     ).toHaveAttribute('dateTime', updated.updatedAt);
     expect(select).toHaveValue('In Progress');
     expect(screen.getByRole('button', { name: 'Update status' })).toBeDisabled();
+  });
+
+  it('updates the status to "Needs your reply"', async () => {
+    const updated: InternalRequest = {
+      ...request,
+      status: 'Needs your reply',
+      updatedAt: '2026-11-25T08:00:00.000Z',
+    };
+    const { calls } = stubFetch((call) =>
+      call.method === 'PATCH'
+        ? jsonResponse(200, { data: updated })
+        : jsonResponse(200, { data: request }),
+    );
+    const { user } = renderRoute(detailPath);
+
+    await user.selectOptions(
+      await screen.findByRole('combobox', { name: 'Status' }),
+      'Needs your reply',
+    );
+    await user.click(screen.getByRole('button', { name: 'Update status' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Status updated to Needs your reply.',
+    );
+    expect(calls.find((call) => call.method === 'PATCH')?.body).toEqual({
+      status: 'Needs your reply',
+    });
+    expect(
+      within(screen.getByRole('article')).getByText('Status', { selector: 'dt' })
+        .nextElementSibling,
+    ).toHaveTextContent('Needs your reply');
   });
 
   it('disables the button while the update is in progress', async () => {
