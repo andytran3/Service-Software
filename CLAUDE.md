@@ -56,7 +56,9 @@ Each request contains:
 Valid statuses:
 
 - `New`
+- `Awaiting approval`
 - `In Progress`
+- `Needs your reply`
 - `Completed`
 
 New requests must default to `New`. Request data must persist across application reloads.

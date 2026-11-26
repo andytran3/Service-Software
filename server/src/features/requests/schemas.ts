@@ -2,7 +2,13 @@ import { z } from 'zod';
 
 /** API labels. Prisma enum names (e.g. IN_PROGRESS) are converted in mappers.ts. */
 export const REQUEST_TYPES = ['IT', 'Facilities', 'HR', 'Other'] as const;
-export const REQUEST_STATUSES = ['New', 'In Progress', 'Completed'] as const;
+export const REQUEST_STATUSES = [
+  'New',
+  'Awaiting approval',
+  'In Progress',
+  'Needs your reply',
+  'Completed',
+] as const;
 
 export type RequestTypeLabel = (typeof REQUEST_TYPES)[number];
 export type RequestStatusLabel = (typeof REQUEST_STATUSES)[number];

@@ -122,7 +122,7 @@ describe('updateStatusSchema', () => {
 
     expect(result.success).toBe(false);
     expect(result.error?.issues[0]?.message).toBe(
-      'Status must be one of: New, In Progress, Completed',
+      'Status must be one of: New, Awaiting approval, In Progress, Needs your reply, Completed',
     );
   });
 

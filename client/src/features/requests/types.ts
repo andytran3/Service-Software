@@ -2,7 +2,13 @@
 // (server/src/features/requests); there is no shared package yet (see ADR 0002).
 
 export const REQUEST_TYPES = ['IT', 'Facilities', 'HR', 'Other'] as const;
-export const REQUEST_STATUSES = ['New', 'In Progress', 'Completed'] as const;
+export const REQUEST_STATUSES = [
+  'New',
+  'Awaiting approval',
+  'In Progress',
+  'Needs your reply',
+  'Completed',
+] as const;
 
 export type RequestType = (typeof REQUEST_TYPES)[number];
 export type RequestStatus = (typeof REQUEST_STATUSES)[number];

@@ -12,9 +12,11 @@ datasource db {
 }
 
 enum RequestStatus {
-  NEW         @map("New")
-  IN_PROGRESS @map("In Progress")
-  COMPLETED   @map("Completed")
+  NEW               @map("New")
+  AWAITING_APPROVAL @map("Awaiting approval")
+  IN_PROGRESS       @map("In Progress")
+  NEEDS_YOUR_REPLY  @map("Needs your reply")
+  COMPLETED         @map("Completed")
 
   @@map("request_status")
 }
