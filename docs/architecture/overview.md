@@ -14,7 +14,7 @@ An internal request management system where employees create, list, view, and up
 | Backend   | `server/` | Express API: validation, business rules, error handling, database access      |
 | Database  | Docker    | PostgreSQL: durable storage and relational integrity                          |
 
-The repository is an npm workspaces monorepo with `client` and `server` workspaces ([ADR 0002](decisions/0002-monorepo-with-npm-workspaces.md)). Technology choices and versions are recorded in [ADR 0001](decisions/0001-initial-technology-stack.md).
+The repository is an npm workspaces monorepo with `client` and `server` workspaces, plus an `e2e` workspace for the Playwright end-to-end tests ([ADR 0002](decisions/0002-monorepo-with-npm-workspaces.md)). Technology choices and versions are recorded in [ADR 0001](decisions/0001-initial-technology-stack.md).
 
 ## Runtime flow (local development)
 
@@ -166,10 +166,11 @@ Table `requests`:
 
 ## Environments
 
-| Environment | Database        | Configuration                                  |
-| ----------- | --------------- | ---------------------------------------------- |
-| Development | `requests_dev`  | `DATABASE_URL` in the root `.env`              |
-| Test        | `requests_test` | `DATABASE_URL_TEST`; guarded to `*_test` names |
+| Environment | Database        | Configuration                                                                                        |
+| ----------- | --------------- | ---------------------------------------------------------------------------------------------------- |
+| Development | `requests_dev`  | `DATABASE_URL` in the root `.env`                                                                    |
+| Test        | `requests_test` | `DATABASE_URL_TEST`; guarded to `*_test` names                                                       |
+| End-to-end  | `requests_test` | API on port 3100 and client on port 5174, started by Playwright with `DATABASE_URL_TEST`; same guard |
 
 Both databases run in one PostgreSQL 18 container (Compose project `service-software`, named volume `service-software_postgres-data`), bound to `127.0.0.1`. Production deployment is not defined yet.
 
@@ -183,7 +184,7 @@ Both databases run in one PostgreSQL 18 container (Compose project `service-soft
 
 - Pagination and filtering of the request list
 - Editing fields other than status, and deleting requests
-- Playwright end-to-end tests
+- Continuous integration (CI)
 - Production deployment and application containers
 
 ## Architectural constraints

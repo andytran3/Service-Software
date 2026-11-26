@@ -80,10 +80,11 @@ Run from the repository root.
 | `npm run dev`                          | Starts the API (`tsx watch`) and the React app (Vite) together      |
 | `npm run dev:server` / `dev:client`    | Starts only one of them                                             |
 | `npm run build`                        | Builds the server (`server/dist`) and client (`client/dist`)        |
-| `npm run typecheck`                    | Type-checks both workspaces                                         |
+| `npm run typecheck`                    | Type-checks all workspaces (`server`, `client`, `e2e`)              |
 | `npm run lint`                         | Runs ESLint                                                         |
 | `npm run format` / `format:check`      | Formats with Prettier / checks formatting                           |
 | `npm test`                             | Runs all unit, component, and integration tests (see `testing.md`)  |
+| `npm run test:e2e`                     | Runs the Playwright end-to-end tests (see `testing.md`)             |
 | `npm run db:up`                        | Starts PostgreSQL and waits until healthy                           |
 | `npm run db:down`                      | Stops PostgreSQL; **keeps** the data volume                         |
 | `npm run db:migrate`                   | Applies pending migrations to the development database              |
@@ -111,6 +112,8 @@ Docker resources are namespaced by the Compose project name `service-software` (
 | `database "requests_test" does not exist`                       | The volume was created before the init script existed. Create it once: `docker compose exec postgres psql -U requests -d requests_dev -c "CREATE DATABASE requests_test;"`, then migrate.          |
 | `npm error engine Unsupported engine`                           | Switch to Node.js 24 (`fnm use`).                                                                                                                                                                  |
 | Port 5173, 3000, or 5432 already in use                         | Stop the other process, or change `PORT` / `POSTGRES_PORT` in `.env` (and the URLs).                                                                                                               |
+| `npm run test:e2e`: `http://localhost:5174 is already used`     | The end-to-end run uses its own ports (API 3100, client 5174) and never reuses a running server. Stop whatever is using the port; `npm run dev` on 3000/5173 can keep running.                     |
+| `npm run test:e2e`: `Executable doesn't exist`                  | Playwright's browser is not installed. Run `npm exec -w e2e -- playwright install chromium` once.                                                                                                  |
 | `npm warn install-scripts ... prisma, @prisma/engines, esbuild` | Expected. npm 11 blocks dependency install scripts by default. They are not needed: Prisma's engine and esbuild's binary ship in their packages. Do not approve them unless a problem requires it. |
 
 ## Git workflow

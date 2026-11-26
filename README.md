@@ -4,7 +4,7 @@ An internal web application where employees create, list, view, and update inter
 
 ## Current status
 
-**Phase 3 — request pages.** The core workflow works end to end in the browser: create a request, see it in the list, open it, and change its status. Data persists in PostgreSQL across reloads and restarts.
+**Phase 4 — end-to-end tests.** The core workflow works end to end in the browser: create a request, see it in the list, open it, and change its status. Data persists in PostgreSQL across reloads and restarts, and Playwright tests check the whole workflow in a real browser.
 
 - PostgreSQL in Docker with separate development and test databases, and the `requests` table created by a Prisma migration.
 - An Express API with:
@@ -14,11 +14,11 @@ An internal web application where employees create, list, view, and update inter
   - a request list (`/`), a new request form (`/requests/new`), and a request detail page with a status update (`/requests/:id`);
   - loading, empty, success, and error states, browser-side validation that mirrors the server's rules, and keyboard-accessible, labelled controls.
 
-Not yet built: pagination and filtering, editing other fields, deleting requests, authentication, and Playwright end-to-end tests. See the [architecture overview](docs/architecture/overview.md) for details.
+Not yet built: pagination and filtering, editing other fields, deleting requests, authentication, and CI. See the [architecture overview](docs/architecture/overview.md) for details.
 
 ## Technology
 
-React, TypeScript, Vite, React Router, TanStack Query, Tailwind CSS · Node.js, Express · PostgreSQL, Prisma · Zod · Vitest, React Testing Library · Docker Compose. See [ADR 0001](docs/architecture/decisions/0001-initial-technology-stack.md).
+React, TypeScript, Vite, React Router, TanStack Query, Tailwind CSS · Node.js, Express · PostgreSQL, Prisma · Zod · Vitest, React Testing Library, Playwright · Docker Compose. See [ADR 0001](docs/architecture/decisions/0001-initial-technology-stack.md).
 
 ## Quick start
 
@@ -42,6 +42,7 @@ npm run lint
 npm run typecheck
 npm test          # requires the database to be running
 npm run build
+npm run test:e2e  # Playwright; one-time setup in docs/testing.md
 ```
 
 ## Documentation
