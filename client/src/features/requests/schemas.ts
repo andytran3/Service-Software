@@ -5,6 +5,7 @@ import { REQUEST_STATUSES, REQUEST_TYPES, type CreateRequestInput } from './type
 // faster feedback in the form.
 export const TITLE_MAX_LENGTH = 200;
 export const DESCRIPTION_MAX_LENGTH = 5000;
+export const SEARCH_MAX_LENGTH = 200;
 
 /** The new-request form. Messages match the server's where the rules overlap. */
 export const requestFormSchema = z.object({
