@@ -1,5 +1,6 @@
 import { Link, type RouteObject } from 'react-router';
 import { NewRequestPage } from '../features/requests/pages/NewRequestPage';
+import { RequestDetailPage } from '../features/requests/pages/RequestDetailPage';
 import { RequestsPage } from '../features/requests/pages/RequestsPage';
 import { Layout } from './Layout';
 import { textLink } from './styles';
@@ -26,6 +27,7 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, Component: RequestsPage },
       { path: 'requests/new', Component: NewRequestPage },
+      { path: 'requests/:id', Component: RequestDetailPage },
       { path: '*', Component: NotFoundPage },
     ],
   },
