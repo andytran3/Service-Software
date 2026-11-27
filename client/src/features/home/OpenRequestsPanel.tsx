@@ -8,10 +8,10 @@ import type { InternalRequest } from '../requests/types';
 
 function OpenRequestRow({ request }: { request: InternalRequest }) {
   return (
-    <li>
+    <li className="first:*:rounded-t-xl last:*:rounded-b-xl">
       <Link
         to={`/requests/${request.id}`}
-        className={`flex items-center gap-3 rounded-md px-3 py-3 hover:bg-gray-50 ${focusRing}`}
+        className={`flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 ${focusRing}`}
       >
         <span className="min-w-0 flex-1">
           <span className="block font-medium break-words text-gray-900">{request.title}</span>
@@ -64,7 +64,7 @@ export function OpenRequestsPanel() {
     );
   } else {
     content = (
-      <ul className="mt-2 divide-y divide-gray-200">
+      <ul className="mt-3 divide-y divide-gray-200 rounded-xl border border-gray-200 bg-white shadow-sm">
         {data.map((request) => (
           <OpenRequestRow key={request.id} request={request} />
         ))}
@@ -73,15 +73,15 @@ export function OpenRequestsPanel() {
   }
 
   return (
-    <section
-      aria-labelledby="open-requests-heading"
-      className="rounded-lg border border-gray-300 bg-white p-4 sm:p-5"
-    >
-      <h2 id="open-requests-heading" className="text-lg font-semibold">
+    <section aria-labelledby="open-requests-heading">
+      <h2
+        id="open-requests-heading"
+        className="text-xs font-semibold tracking-wider text-gray-600 uppercase"
+      >
         Open requests
       </h2>
       {content}
-      <p className="mt-4 text-sm">
+      <p className="mt-3 text-sm">
         <Link to="/requests" className={textLink}>
           View all requests
         </Link>

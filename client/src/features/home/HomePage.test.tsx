@@ -24,10 +24,8 @@ describe('HomePage', () => {
       'Services',
     ]);
     const main = screen.getByRole('main');
-    expect(within(main).getByRole('link', { name: 'New request' })).toHaveAttribute(
-      'href',
-      '/requests/new',
-    );
+    // The hero has no New request button; the header's New request link is outside main.
+    expect(within(main).queryByRole('link', { name: 'New request' })).not.toBeInTheDocument();
   });
 
   it('searches from the hero and opens the results on /requests', async () => {
