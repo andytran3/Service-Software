@@ -11,7 +11,9 @@ An internal web application where employees create, list, view, and update inter
   - `POST /api/requests`, `GET /api/requests`, `GET /api/requests/:id`, and `PATCH /api/requests/:id/status` (the list accepts `?q=` to search titles and descriptions), with server-side validation (Zod), consistent `{ data }` / `{ error }` responses, and data stored in PostgreSQL.
   - A database-backed health check (`GET /api/health`).
 - A React application served by Vite (which proxies `/api` to the API) with:
-  - a request list with search (`/`), a new request form (`/requests/new`), and a request detail page with a status update (`/requests/:id`);
+  - a Service Portal landing page (`/`) with search, shortcuts to common requests, the open requests (those that need a reply first), and a card for each request type;
+  - a request list with search (`/requests`), a new request form (`/requests/new`, which can preselect a type), and a request detail page with a status update (`/requests/:id`);
+  - a teal theme defined once as colour tokens;
   - loading, empty, success, and error states, browser-side validation that mirrors the server's rules, and keyboard-accessible, labelled controls.
 
 Not yet built: pagination, filtering by status or type, editing other fields, deleting requests, authentication, and CI. See the [architecture overview](docs/architecture/overview.md) for details.
