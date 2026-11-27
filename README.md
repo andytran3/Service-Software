@@ -4,6 +4,8 @@ An internal web app where employees create, track, and update requests (IT, Faci
 
 Setup, features, and full documentation: [ProjectREADME.md](ProjectREADME.md).
 
+The project is deployed at https://serviceportal-andytran.onrender.com/
+
 ## Technology choices
 
 | Layer            | Choice                                    | Main reason                                                                                         |
