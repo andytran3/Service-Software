@@ -1,59 +1,40 @@
-# Internal Request Management System
+# Service Portal: Internal Request Management System
 
-An internal web application where employees create, list, view, and update internal requests.
+An internal web app where employees create, track, and update requests (IT, Facilities, HR, Other).
 
-## Current status
+Setup, features, and full documentation: [ProjectREADME.md](ProjectREADME.md).
 
-**Phase 4 — end-to-end tests.** The core workflow works end to end in the browser: create a request, see it in the list, open it, and change its status. Data persists in PostgreSQL across reloads and restarts, and Playwright tests check the whole workflow in a real browser.
+## Technology choices
 
-- PostgreSQL in Docker with separate development and test databases, and the `requests` table created by a Prisma migration.
-- An Express API with:
-  - `POST /api/requests`, `GET /api/requests`, `GET /api/requests/:id`, and `PATCH /api/requests/:id/status` (the list accepts `?q=` to search titles, descriptions, and request IDs), with server-side validation (Zod), consistent `{ data }` / `{ error }` responses, and data stored in PostgreSQL.
-  - A database-backed health check (`GET /api/health`).
-- A React application served by Vite (which proxies `/api` to the API) with:
-  - a Service Portal landing page (`/`) with search, shortcuts to common requests, the open requests (those that need a reply first), and a card for each request type;
-  - a request list (`/requests`) with summary counts, search, and a status filter, a new request form (`/requests/new`, which can preselect a type), and a request detail page with a status update (`/requests/:id`);
-  - a teal theme defined once as colour tokens;
-  - loading, empty, success, and error states, browser-side validation that mirrors the server's rules, and keyboard-accessible, labelled controls.
+| Layer            | Choice                                    | Main reason                                                                                         |
+| ---------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Frontend         | React, TypeScript, Vite                   | Compile-time type checks across the UI; fast dev server and builds                                  |
+| Routing and data | React Router, TanStack Query              | Views live in the URL; server data is cached and refreshed automatically                            |
+| Styling          | Tailwind CSS                              | Brand colours and spacing set in one place, with no component library to maintain                   |
+| Backend          | Node.js, Express, TypeScript              | One language across the stack; a small, explicit API layer                                          |
+| Validation       | Zod                                       | Checks data at runtime and derives TypeScript types from the same schema                            |
+| Database         | PostgreSQL, Prisma                        | Relational data with constraints; versioned migrations and a typed client                           |
+| Testing          | Vitest, React Testing Library, Playwright | Each layer catches different failures; API tests run against a real database                        |
+| Local setup      | Docker Compose, npm workspaces            | One command starts the database; one install covers client, server, and end-to-end tests            |
+| Hosting          | Render (free tier)                        | Site, API, and database defined in one Blueprint (`render.yaml`); free, with limits described below |
 
-A short demonstration can be deployed to Render's free tier with `render.yaml` ([steps](docs/development.md#deploying-to-render)).
+Decisions and trade-offs are recorded as ADRs in [docs/architecture/decisions/](docs/architecture/decisions/).
 
-Not yet built: pagination, filtering by status or type, editing other fields, deleting requests, authentication, and CI. See the [architecture overview](docs/architecture/overview.md) for details.
+## How I used AI
 
-## Technology
+I built this with Claude Code (Anthropic's AI coding assistant) as a pair programmer, under the working rules in [CLAUDE.md](CLAUDE.md). I also created a Claude agent to help me write more efficient prompts. Before I hand a task to Claude Code, the agent helps me turn a rough request into a clear one: the goal, the relevant files, the constraints, and what "done" looks like. The aim was fewer correction rounds and less wasted effort on both sides.
 
-React, TypeScript, Vite, React Router, TanStack Query, Tailwind CSS · Node.js, Express · PostgreSQL, Prisma · Zod · Vitest, React Testing Library, Playwright · Docker Compose. See [ADR 0001](docs/architecture/decisions/0001-initial-technology-stack.md).
+- **I set the requirements and made the decisions.** For each piece of work, the AI inspected the existing code and wrote a proposal with options and trade-offs. I chose between them, and significant choices are recorded as ADRs.
+- **Nothing changed without my approval.** Every file change, commit, push, and pull request needed my sign-off first. I reviewed and merged every pull request myself.
+- **The AI wrote most of the code, tests, and documentation, and checked its own work.** Before I reviewed anything, it ran the test suite, type checks, linting, and builds. It also checked the interface in a browser for layout, keyboard navigation, and colour contrast.
+- **I connected it to tools through MCP (Model Context Protocol).** Context7 gave it current documentation for libraries such as Prisma, TanStack Query, and Tailwind, rather than relying on what it learned in training. Playwright MCP let it open the running app in a browser to check layouts, keyboard navigation, and colour contrast.
+- **It was weakest at visual design.** Its layouts and CSS usually worked and passed the accessibility checks, but they didn't always look or feel right. It couldn't judge spacing, visual hierarchy, or what felt natural to use the way a person looking at the screen can. I often had to redirect it: for example, I reverted radio-button cards to a dropdown and reordered the form fields. Several pages took more than one round of restyling. This is also why a UI/UX design pass is on my improvement list.
 
-## Quick start
+## What I'd improve with more time
 
-Requires Node.js 24, npm 11, and Docker Desktop (running). Full instructions: [docs/development.md](docs/development.md).
-
-```bash
-npm install
-cp .env.example .env        # PowerShell: Copy-Item .env.example .env
-npm run db:up
-npm run db:migrate
-npm run db:migrate:test
-npm run dev
-```
-
-Then open http://localhost:5173. The API health check is at http://localhost:5173/api/health.
-
-## Checks
-
-```bash
-npm run lint
-npm run typecheck
-npm test          # requires the database to be running
-npm run build
-npm run test:e2e  # Playwright; one-time setup in docs/testing.md
-```
-
-## Documentation
-
-| Document                                                       | Contents                                    |
-| -------------------------------------------------------------- | ------------------------------------------- |
-| [docs/development.md](docs/development.md)                     | Setup, environment, commands, and workflows |
-| [docs/testing.md](docs/testing.md)                             | Test strategy, commands, and test database  |
-| [docs/architecture/overview.md](docs/architecture/overview.md) | Current architecture                        |
-| [docs/architecture/decisions/](docs/architecture/decisions/)   | Architecture Decision Records               |
+- **Authentication, role-based access control, and role-specific workflows**, including rules for who may change which status.
+- **Server-side filtering and pagination**, instead of filtering the full list in the browser.
+- **Editing and deleting requests**, with a change history.
+- **Continuous integration:** run the tests and checks on every pull request with GitHub Actions.
+- **Production hosting:** a paid database with backups, an API that does not sleep, and logging and monitoring, none of which the free tier provides.
+- **UI/UX:** a design pass on layout, visual hierarchy, and navigation, building on the accessibility checks already in place.

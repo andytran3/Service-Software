@@ -271,7 +271,8 @@ Maintain:
 
 | Document                        | Responsibility                                          |
 | ------------------------------- | ------------------------------------------------------- |
-| `README.md`                     | Project overview and setup                              |
+| `README.md`                     | Short summary: technology choices, AI use, improvements |
+| `ProjectREADME.md`              | Project overview and setup                              |
 | `docs/architecture/overview.md` | Current implemented architecture                        |
 | `docs/architecture/decisions/`  | Architectural Decision Records                          |
 | `docs/testing.md`               | Testing strategy and commands                           |
