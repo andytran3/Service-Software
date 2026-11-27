@@ -13,6 +13,10 @@ export const REQUEST_STATUSES = [
 export type RequestType = (typeof REQUEST_TYPES)[number];
 export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 
+export function isRequestStatus(value: unknown): value is RequestStatus {
+  return (REQUEST_STATUSES as readonly unknown[]).includes(value);
+}
+
 export function isRequestType(value: unknown): value is RequestType {
   return (REQUEST_TYPES as readonly unknown[]).includes(value);
 }

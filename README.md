@@ -8,11 +8,11 @@ An internal web application where employees create, list, view, and update inter
 
 - PostgreSQL in Docker with separate development and test databases, and the `requests` table created by a Prisma migration.
 - An Express API with:
-  - `POST /api/requests`, `GET /api/requests`, `GET /api/requests/:id`, and `PATCH /api/requests/:id/status` (the list accepts `?q=` to search titles and descriptions), with server-side validation (Zod), consistent `{ data }` / `{ error }` responses, and data stored in PostgreSQL.
+  - `POST /api/requests`, `GET /api/requests`, `GET /api/requests/:id`, and `PATCH /api/requests/:id/status` (the list accepts `?q=` to search titles, descriptions, and request IDs), with server-side validation (Zod), consistent `{ data }` / `{ error }` responses, and data stored in PostgreSQL.
   - A database-backed health check (`GET /api/health`).
 - A React application served by Vite (which proxies `/api` to the API) with:
   - a Service Portal landing page (`/`) with search, shortcuts to common requests, the open requests (those that need a reply first), and a card for each request type;
-  - a request list with search (`/requests`), a new request form (`/requests/new`, which can preselect a type), and a request detail page with a status update (`/requests/:id`);
+  - a request list (`/requests`) with summary counts, search, and a status filter, a new request form (`/requests/new`, which can preselect a type), and a request detail page with a status update (`/requests/:id`);
   - a teal theme defined once as colour tokens;
   - loading, empty, success, and error states, browser-side validation that mirrors the server's rules, and keyboard-accessible, labelled controls.
 

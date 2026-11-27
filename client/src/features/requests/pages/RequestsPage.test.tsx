@@ -1,5 +1,5 @@
 import { screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { jsonResponse, pendingResponse, stubFetch } from '../../../test/fetch';
 import { renderRoute } from '../../../test/render';
 import type { InternalRequest } from '../types';
@@ -68,7 +68,7 @@ describe('RequestsPage', () => {
     const headers = within(table)
       .getAllByRole('columnheader')
       .map((header) => header.textContent);
-    expect(headers).toEqual(['Title', 'Type', 'Status', 'Created']);
+    expect(headers).toEqual(['Request', 'Status', 'Type', 'Updated']);
 
     const rows = within(table).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(2);
@@ -82,7 +82,8 @@ describe('RequestsPage', () => {
     );
     expect(first.getByText('HR')).toBeInTheDocument();
     expect(first.getByText('In Progress')).toBeInTheDocument();
-    expect(firstRow.querySelector('time')).toHaveAttribute('dateTime', newer.createdAt);
+    expect(first.getByText('#61c1340b')).toHaveAttribute('title', newer.id);
+    expect(firstRow.querySelector('time')).toHaveAttribute('dateTime', newer.updatedAt);
 
     const second = within(secondRow);
     expect(second.getByRole('link', { name: 'Replace monitor' })).toBeInTheDocument();
@@ -141,7 +142,7 @@ describe('RequestsPage search', () => {
     renderRoute('/requests');
 
     const search = screen.getByRole('searchbox', { name: 'Search requests' });
-    expect(search).toHaveAccessibleDescription('Searches titles and descriptions.');
+    expect(search).toHaveAccessibleDescription('Searches titles, descriptions and request IDs.');
     expect(screen.getByRole('search')).toContainElement(search);
     expect(screen.queryByRole('button', { name: 'Clear search' })).not.toBeInTheDocument();
   });
@@ -228,7 +229,7 @@ describe('RequestsPage search', () => {
 
     expect(search).toHaveAttribute('aria-invalid', 'true');
     expect(search).toHaveAccessibleDescription(
-      'Searches titles and descriptions. Search must be at most 200 characters',
+      'Searches titles, descriptions and request IDs. Search must be at most 200 characters',
     );
     expect(search).toHaveFocus();
     expect(router.state.location.search).toBe('');
@@ -250,9 +251,156 @@ describe('RequestsPage search', () => {
     await user.click(await screen.findByRole('button', { name: 'Try again' }));
 
     expect(await screen.findByRole('link', { name: 'Replace monitor' })).toBeInTheDocument();
-    expect(calls.map((call) => call.url)).toEqual([
+    // The search is retried; the summary cards' unsearched request is separate.
+    expect(calls.map((call) => call.url).filter((url) => url.includes('?q='))).toEqual([
       '/api/requests?q=monitor',
       '/api/requests?q=monitor',
     ]);
+  });
+});
+
+describe('RequestsPage summary and status filter', () => {
+  // Local time, so "this month" holds in any time zone.
+  const NOW = new Date(2026, 10, 26, 12, 0);
+
+  function made(
+    title: string,
+    status: InternalRequest['status'],
+    updatedAt: Date,
+  ): InternalRequest {
+    return {
+      ...older,
+      id: crypto.randomUUID(),
+      title,
+      status,
+      updatedAt: updatedAt.toISOString(),
+    };
+  }
+
+  const reply = made('Laptop replacement', 'Needs your reply', new Date(2026, 10, 25));
+  const approval = made('Figma seat', 'Awaiting approval', new Date(2026, 10, 24));
+  const doneNow = made('Badge access', 'Completed', new Date(2026, 10, 2));
+  const doneBefore = made('New hire kit', 'Completed', new Date(2026, 9, 30));
+  const all = [reply, newer, approval, doneNow, doneBefore, older];
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function stubList() {
+    return stubFetch((call) => {
+      const q = new URL(call.url, 'http://localhost').searchParams.get('q');
+      const data = q
+        ? all.filter((item) => item.title.toLowerCase().includes(q.toLowerCase()))
+        : all;
+      return jsonResponse(200, { data });
+    });
+  }
+
+  function cardCount(label: string): string | null | undefined {
+    return screen.getByText(label).nextElementSibling?.textContent;
+  }
+
+  async function rowTitles(): Promise<string[]> {
+    const table = await screen.findByRole('table');
+    return within(table)
+      .getAllByRole('link')
+      .map((link) => link.textContent ?? '');
+  }
+
+  it('counts every request in the summary cards', async () => {
+    stubList();
+    renderRoute('/requests');
+
+    expect(await screen.findByText('Reply to keep these moving')).toBeInTheDocument();
+    expect(cardCount('Needs your action')).toBe('1');
+    expect(cardCount('In progress')).toBe('2');
+    expect(cardCount('Completed this month')).toBe('1');
+    expect(screen.getByText('Waiting on a team, nothing for you')).toBeInTheDocument();
+    expect(screen.getByText('Closed and confirmed')).toBeInTheDocument();
+  });
+
+  it('keeps counting every request during a search', async () => {
+    stubList();
+    renderRoute('/requests?q=laptop');
+
+    expect(await rowTitles()).toEqual(['Laptop replacement']);
+    expect(await screen.findByText('Reply to keep these moving')).toBeInTheDocument();
+    expect(cardCount('In progress')).toBe('2');
+    expect(cardCount('Completed this month')).toBe('1');
+  });
+
+  it('shows the search placeholder', async () => {
+    stubList();
+    renderRoute('/requests');
+
+    expect(screen.getByRole('searchbox', { name: 'Search requests' })).toHaveAttribute(
+      'placeholder',
+      'Search by title, description or ID',
+    );
+  });
+
+  it('filters by status in the browser, keeps it in the URL, and announces the count', async () => {
+    const { calls } = stubList();
+    const { user, router } = renderRoute('/requests');
+    await screen.findByRole('table');
+    const callsBefore = calls.length;
+
+    const select = screen.getByRole('combobox', { name: 'Status' });
+    expect(select).toHaveValue('');
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual([
+      'All statuses',
+      'New',
+      'Awaiting approval',
+      'In Progress',
+      'Needs your reply',
+      'Completed',
+    ]);
+    await user.selectOptions(select, 'Completed');
+
+    expect(router.state.location.search).toBe('?status=Completed');
+    expect(await rowTitles()).toEqual(['Badge access', 'New hire kit']);
+    expect(screen.getByRole('table')).toHaveAccessibleName(
+      'Requests matching with status “Completed”, newest first',
+    );
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '2 requests match with status “Completed”',
+    );
+    expect(calls).toHaveLength(callsBefore);
+
+    await user.selectOptions(select, 'All statuses');
+    expect(router.state.location.search).toBe('');
+    expect(await rowTitles()).toHaveLength(all.length);
+  });
+
+  it('combines the status filter with a search and keeps both in the URL', async () => {
+    stubList();
+    const { user, router } = renderRoute('/requests?status=New');
+    expect(await rowTitles()).toEqual(['Replace monitor']);
+
+    await user.type(screen.getByRole('searchbox', { name: 'Search requests' }), 'kit{Enter}');
+
+    expect(router.state.location.search).toBe('?q=kit&status=New');
+    expect(
+      await screen.findByText('No requests match “kit” with status “New”.'),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Try a different search or status/)).toBeInTheDocument();
+  });
+
+  it('ignores an unknown status in the URL', async () => {
+    stubList();
+    renderRoute('/requests?status=bogus');
+
+    expect(await rowTitles()).toHaveLength(all.length);
+    expect(screen.getByRole('combobox', { name: 'Status' })).toHaveValue('');
   });
 });
