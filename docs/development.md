@@ -116,6 +116,25 @@ Docker resources are namespaced by the Compose project name `service-software` (
 | `npm run test:e2e`: `Executable doesn't exist`                  | Playwright's browser is not installed. Run `npm exec -w e2e -- playwright install chromium` once.                                                                                                  |
 | `npm warn install-scripts ... prisma, @prisma/engines, esbuild` | Expected. npm 11 blocks dependency install scripts by default. They are not needed: Prisma's engine and esbuild's binary ship in their packages. Do not approve them unless a problem requires it. |
 
+## Deploying to Render
+
+A short public demonstration runs on Render's free tier, defined in `render.yaml` (see [ADR 0004](architecture/decisions/0004-deploy-to-render.md)). Render builds from `main`, so merge any changes first.
+
+**Free-tier limits:** the API sleeps after 15 minutes without traffic and takes about a minute to wake. The database has 1 GB and no backups, and **expires 30 days after creation** (Render deletes it 14 days later). There is no login, so do not enter sensitive information.
+
+1. **Sign up and connect GitHub.** Sign up at [render.com](https://render.com) with GitHub, and give Render access to this repository (it can be limited to this one).
+2. **Create the services from the Blueprint.** In the [Render Dashboard](https://dashboard.render.com), choose **New** → **Blueprint**, pick this repository and the `main` branch, check that all three resources (`serviceportal-andytran-db`, `serviceportal-andytran-api`, `serviceportal-andytran`) show **Free**, and select **Apply**.
+3. **Wait for the deploys.** The database becomes **Available** first. In the API's **Logs**, look for `No pending migrations to apply` (or the migrations being applied) and then `Server listening on …`; its status becomes **Live**. The static site becomes **Live** too.
+4. **Check the API's address.** Open `serviceportal-andytran-api`: the address at the top should be `https://serviceportal-andytran-api.onrender.com`. If Render added a suffix because the name was taken, update the `/api/*` rewrite in `render.yaml` to the real address and merge it. As a quick fix until then, edit the rule under the static site's **Redirects/Rewrites** (the next Blueprint sync restores the file's value).
+5. **Try it.** Open https://serviceportal-andytran.onrender.com (the address is not case-sensitive, so `ServicePortal-AndyTran.onrender.com` works too):
+   - `/api/health` shows `{"status":"ok","database":"ok"}`.
+   - Create a request, then reload: it is still there.
+   - Open `/requests/new` directly in a new tab: the form loads.
+   - After a quiet spell, the first request waits about a minute while the API wakes.
+6. **Remove it when done.** Delete `serviceportal-andytran` and `serviceportal-andytran-api` (each service's **Settings** → **Delete**), then `serviceportal-andytran-db`. Deleting the database is permanent.
+
+Every merge to `main` redeploys both services while they exist.
+
 ## Git workflow
 
 Work on a feature branch (never on `main`) and use Conventional Commits. The full rules are in [CLAUDE.md](../CLAUDE.md#5-git-and-github-workflow).

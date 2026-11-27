@@ -16,6 +16,8 @@ An internal web application where employees create, list, view, and update inter
   - a teal theme defined once as colour tokens;
   - loading, empty, success, and error states, browser-side validation that mirrors the server's rules, and keyboard-accessible, labelled controls.
 
+A short demonstration can be deployed to Render's free tier with `render.yaml` ([steps](docs/development.md#deploying-to-render)).
+
 Not yet built: pagination, filtering by status or type, editing other fields, deleting requests, authentication, and CI. See the [architecture overview](docs/architecture/overview.md) for details.
 
 ## Technology

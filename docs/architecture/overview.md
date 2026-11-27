@@ -185,13 +185,24 @@ Table `requests`:
 
 ## Environments
 
-| Environment | Database        | Configuration                                                                                        |
-| ----------- | --------------- | ---------------------------------------------------------------------------------------------------- |
-| Development | `requests_dev`  | `DATABASE_URL` in the root `.env`                                                                    |
-| Test        | `requests_test` | `DATABASE_URL_TEST`; guarded to `*_test` names                                                       |
-| End-to-end  | `requests_test` | API on port 3100 and client on port 5174, started by Playwright with `DATABASE_URL_TEST`; same guard |
+| Environment   | Database                    | Configuration                                                                                        |
+| ------------- | --------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Development   | `requests_dev`              | `DATABASE_URL` in the root `.env`                                                                    |
+| Test          | `requests_test`             | `DATABASE_URL_TEST`; guarded to `*_test` names                                                       |
+| End-to-end    | `requests_test`             | API on port 3100 and client on port 5174, started by Playwright with `DATABASE_URL_TEST`; same guard |
+| Render (demo) | `serviceportal-andytran-db` | `render.yaml` Blueprint; `DATABASE_URL` set by Render from the database                              |
 
-Both databases run in one PostgreSQL 18 container (Compose project `service-software`, named volume `service-software_postgres-data`), bound to `127.0.0.1`. Production deployment is not defined yet.
+Both databases run in one PostgreSQL 18 container (Compose project `service-software`, named volume `service-software_postgres-data`), bound to `127.0.0.1`.
+
+### Render deployment
+
+A short public demonstration runs on Render's free tier, defined in `render.yaml` ([ADR 0004](decisions/0004-deploy-to-render.md); steps in [docs/development.md](../development.md#deploying-to-render)):
+
+- **Static site** `serviceportal-andytran` (https://serviceportal-andytran.onrender.com) serves `client/dist`. It rewrites `/api/*` to the API and every other path to `/index.html`, so the client's relative `/api` calls work without CORS.
+- **Web service** `serviceportal-andytran-api` runs the built API. Each start runs `prisma migrate deploy`, then `node dist/server.js`; Render checks `/api/health`.
+- **Database** `serviceportal-andytran-db`: free Render Postgres, 1 GB, no backups, expires 30 days after creation.
+
+The free API spins down after 15 minutes without traffic and takes about a minute to wake. There is no authentication, so the deployment is for demonstration only.
 
 ## Security
 
@@ -204,7 +215,7 @@ Both databases run in one PostgreSQL 18 container (Compose project `service-soft
 - Pagination of the request list, filtering by type, and a server-side status filter (text search and a browser-side status filter are implemented)
 - Editing fields other than status, and deleting requests
 - Continuous integration (CI)
-- Production deployment and application containers
+- Production deployment (beyond the free-tier demonstration on Render) and application containers
 
 ## Architectural constraints
 
