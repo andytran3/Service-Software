@@ -1,59 +1,41 @@
-# Internal Request Management System
+# Service Portal: Internal Request Management System
 
-An internal web application where employees create, list, view, and update internal requests.
+An internal web app where employees create, track, and update requests (IT, Facilities, HR, Other).
 
-## Current status
+Setup, features, and full documentation: [ProjectREADME.md](ProjectREADME.md).
 
-**Phase 4 — end-to-end tests.** The core workflow works end to end in the browser: create a request, see it in the list, open it, and change its status. Data persists in PostgreSQL across reloads and restarts, and Playwright tests check the whole workflow in a real browser.
+## Technology choices
 
-- PostgreSQL in Docker with separate development and test databases, and the `requests` table created by a Prisma migration.
-- An Express API with:
-  - `POST /api/requests`, `GET /api/requests`, `GET /api/requests/:id`, and `PATCH /api/requests/:id/status` (the list accepts `?q=` to search titles, descriptions, and request IDs), with server-side validation (Zod), consistent `{ data }` / `{ error }` responses, and data stored in PostgreSQL.
-  - A database-backed health check (`GET /api/health`).
-- A React application served by Vite (which proxies `/api` to the API) with:
-  - a Service Portal landing page (`/`) with search, shortcuts to common requests, the open requests (those that need a reply first), and a card for each request type;
-  - a request list (`/requests`) with summary counts, search, and a status filter, a new request form (`/requests/new`, which can preselect a type), and a request detail page with a status update (`/requests/:id`);
-  - a teal theme defined once as colour tokens;
-  - loading, empty, success, and error states, browser-side validation that mirrors the server's rules, and keyboard-accessible, labelled controls.
+| Layer            | Choice                                    | Why                                                                                                      |
+| ---------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Frontend         | React, TypeScript, Vite                   | Typed components and a fast dev server and build                                                         |
+| Routing and data | React Router, TanStack Query              | URL-driven pages (search and filters survive reloads); caching and refetching without hand-written state |
+| Styling          | Tailwind CSS                              | Consistent spacing and one set of brand colour tokens, without a component library                       |
+| Backend          | Node.js, Express, TypeScript              | One language across the stack; a small, well-understood API layer                                        |
+| Validation       | Zod                                       | The server is the authority; the client mirrors the same rules for faster feedback                       |
+| Database         | PostgreSQL, Prisma                        | Relational storage with versioned migrations and a typed client                                          |
+| Testing          | Vitest, React Testing Library, Playwright | Unit, API (against a real test database), component, and end-to-end browser tests                        |
+| Local setup      | Docker Compose, npm workspaces            | One command for the database; client, server, and E2E tests in one repo                                  |
+| Hosting          | Render (free tier)                        | Static site, API, and database from one Blueprint (`render.yaml`) at no cost                             |
 
-A short demonstration can be deployed to Render's free tier with `render.yaml` ([steps](docs/development.md#deploying-to-render)).
+Decisions and trade-offs are recorded as ADRs in [docs/architecture/decisions/](docs/architecture/decisions/).
 
-Not yet built: pagination, filtering by status or type, editing other fields, deleting requests, authentication, and CI. See the [architecture overview](docs/architecture/overview.md) for details.
+## How I used AI
 
-## Technology
+I built this with Claude Code (Anthropic's AI coding assistant) as a pair programmer, under rules I set in [CLAUDE.md](CLAUDE.md):
 
-React, TypeScript, Vite, React Router, TanStack Query, Tailwind CSS · Node.js, Express · PostgreSQL, Prisma · Zod · Vitest, React Testing Library, Playwright · Docker Compose. See [ADR 0001](docs/architecture/decisions/0001-initial-technology-stack.md).
+- **I set the requirements and made the decisions.** For each piece of work, the AI inspected the code and wrote a proposal with options; I chose between them (for example the status model, page wording, layouts, and what to leave out when a design needed data the app doesn't have).
+- **Nothing changed without my approval.** Every file change, commit, push, and pull request was approved first; I reviewed and merged every pull request myself.
+- **The AI wrote most of the code, tests, and docs**, and verified its work: tests, type checks, linting, builds, and browser checks of layout, keyboard use, and colour contrast.
+- **I redirected it when needed**, such as reverting radio-button cards to a dropdown, or changing the order of form fields.
 
-## Quick start
+## What I'd improve with more time
 
-Requires Node.js 24, npm 11, and Docker Desktop (running). Full instructions: [docs/development.md](docs/development.md).
-
-```bash
-npm install
-cp .env.example .env        # PowerShell: Copy-Item .env.example .env
-npm run db:up
-npm run db:migrate
-npm run db:migrate:test
-npm run dev
-```
-
-Then open http://localhost:5173. The API health check is at http://localhost:5173/api/health.
-
-## Checks
-
-```bash
-npm run lint
-npm run typecheck
-npm test          # requires the database to be running
-npm run build
-npm run test:e2e  # Playwright; one-time setup in docs/testing.md
-```
-
-## Documentation
-
-| Document                                                       | Contents                                    |
-| -------------------------------------------------------------- | ------------------------------------------- |
-| [docs/development.md](docs/development.md)                     | Setup, environment, commands, and workflows |
-| [docs/testing.md](docs/testing.md)                             | Test strategy, commands, and test database  |
-| [docs/architecture/overview.md](docs/architecture/overview.md) | Current architecture                        |
-| [docs/architecture/decisions/](docs/architecture/decisions/)   | Architecture Decision Records               |
+- **Authentication and roles:** "my requests", and rules for who may change which status.
+- **Server-side filtering and pagination**, instead of filtering the full list in the browser.
+- **Editing and deleting requests**, with a change history.
+- **Continuous integration:** run the tests and checks on every pull request (GitHub Actions).
+- **Automated accessibility checks** (for example axe) alongside the manual ones.
+- **A shared types package** so the client and server stop duplicating request definitions.
+- **Production hosting:** a paid database with backups and an API that doesn't sleep, plus logging and monitoring.
+- **The richer request flow from the designs:** steps, extra fields (needed-by date, cost centre), and attachments.
