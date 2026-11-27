@@ -63,13 +63,13 @@ test('create a request and update its status using only the keyboard', async ({
   await tabTo(page, titleField);
   await page.keyboard.type(title);
   await page.keyboard.press('Tab');
-  await expect(page.getByRole('textbox', { name: 'Description' })).toBeFocused();
-  await page.keyboard.type('Entered with the keyboard only.');
-  await page.keyboard.press('Tab');
   const typeField = page.getByRole('combobox', { name: 'Type' });
   await expect(typeField).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(typeField).toHaveValue('IT');
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('textbox', { name: 'Description' })).toBeFocused();
+  await page.keyboard.type('Entered with the keyboard only.');
   await page.keyboard.press('Tab');
   await expect(page.getByRole('button', { name: 'Create request' })).toBeFocused();
   await expectVisibleFocus(page);

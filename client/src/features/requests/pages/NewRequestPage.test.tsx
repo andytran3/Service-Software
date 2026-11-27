@@ -37,7 +37,17 @@ describe('NewRequestPage', () => {
         .getAllByRole('option')
         .map((option) => option.textContent),
     ).toEqual(['Select a type', 'IT', 'Facilities', 'HR', 'Other']);
-    expect(screen.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', '/requests');
+    // Cancel lives in the focused header.
+    expect(screen.getByRole('link', { name: 'Cancel request' })).toHaveAttribute(
+      'href',
+      '/requests',
+    );
+    // Title, Type, Description, in that order.
+    expect(
+      Array.from(document.querySelectorAll('main input, main select, main textarea')).map(
+        (control) => control.id,
+      ),
+    ).toEqual(['title', 'type', 'description']);
   });
 
   it.each(['IT', 'Facilities', 'HR', 'Other'])('preselects the type from ?type=%s', (type) => {
@@ -45,6 +55,7 @@ describe('NewRequestPage', () => {
     renderRoute(`/requests/new?type=${type}`);
 
     expect(fields().type).toHaveValue(type);
+    expect(screen.getByText(`${type} request`)).toBeInTheDocument();
     expect(fields().title).toHaveValue('');
   });
 
@@ -71,6 +82,27 @@ describe('NewRequestPage', () => {
     );
     expect(type).toHaveAccessibleDescription('Select a request type');
     expect(title).toHaveFocus();
+  });
+
+  it('focuses Type before Description when both are missing', async () => {
+    stubFetch(() => pendingResponse());
+    const { user } = renderRoute('/requests/new');
+    const { title, type, submit } = fields();
+
+    await user.type(title, 'Replace monitor');
+    await user.click(submit);
+
+    expect(screen.getByText('Description is required')).toBeInTheDocument();
+    expect(type).toHaveFocus();
+  });
+
+  it('names the chosen type in the eyebrow', async () => {
+    stubFetch(() => pendingResponse());
+    const { user } = renderRoute('/requests/new');
+
+    await user.selectOptions(fields().type, 'HR');
+
+    expect(screen.getByText('HR request')).toBeInTheDocument();
   });
 
   it('enforces the length limits before submitting', async () => {
