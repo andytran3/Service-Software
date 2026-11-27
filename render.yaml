@@ -1,0 +1,48 @@
+# Render Blueprint: the Service Portal on Render's free tier.
+# See ADR 0004 (docs/architecture/decisions/0004-deploy-to-render.md) and the
+# "Deploying to Render" steps in docs/development.md.
+#
+# Render builds each service's onrender.com subdomain from its name, so the site is
+# https://serviceportal-andytran.onrender.com and the API is
+# https://serviceportal-andytran-api.onrender.com, unless a name is already taken, in which
+# case Render adds a suffix. If the API's address differs, update the /api/* rewrite below.
+
+databases:
+  # Free plan: 1 GB, no backups, and it expires 30 days after creation (deleted 14 days later).
+  - name: serviceportal-andytran-db
+    plan: free
+    region: oregon
+
+services:
+  # The Express API. Free web services spin down after 15 minutes without traffic and take
+  # about a minute to wake. Migrations run before each start because Render's pre-deploy
+  # command is paid only; `prisma migrate deploy` applies only migrations that have not run.
+  - type: web
+    name: serviceportal-andytran-api
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm ci && npm run build -w server
+    startCommand: npm run db:migrate -w server && npm start -w server
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: serviceportal-andytran-db
+          property: connectionString
+
+  # The React app. The client calls a relative /api, so the first rule forwards those calls
+  # to the API and the browser sees one site. The second sends every other path to
+  # index.html for React Router; Render serves real files (such as /assets/*) before rules.
+  - type: web
+    name: serviceportal-andytran
+    runtime: static
+    buildCommand: npm ci && npm run build -w client
+    staticPublishPath: ./client/dist
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://serviceportal-andytran-api.onrender.com/api/*
+      - type: rewrite
+        source: /*
+        destination: /index.html
