@@ -13,6 +13,10 @@ export const REQUEST_STATUSES = [
 export type RequestType = (typeof REQUEST_TYPES)[number];
 export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 
+export function isRequestType(value: unknown): value is RequestType {
+  return (REQUEST_TYPES as readonly unknown[]).includes(value);
+}
+
 /** A request as returned by the API. Dates are ISO 8601 strings. */
 export interface InternalRequest {
   id: string;

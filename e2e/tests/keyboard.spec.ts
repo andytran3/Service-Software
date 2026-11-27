@@ -24,8 +24,17 @@ async function tabTo(page: Page, target: Locator, maxStops = 20): Promise<void> 
   throw new Error(`Could not reach the target with ${maxStops} Tab presses`);
 }
 
+/**
+ * Waits until a page has rendered before pressing keys. The URL changes before React draws the
+ * new page, so a key pressed right after a URL check can land on a page that is not there yet.
+ */
+async function expectPage(page: Page, heading: string): Promise<void> {
+  await expect(page.getByRole('heading', { level: 1, name: heading, exact: true })).toBeVisible();
+}
+
 test('the skip link is the first stop and moves focus to the main content', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/requests');
+  await expectPage(page, 'Requests');
 
   await page.keyboard.press('Tab');
   const skipLink = page.getByRole('link', { name: 'Skip to main content' });
@@ -40,7 +49,8 @@ test('create a request and update its status using only the keyboard', async ({
   page,
 }, testInfo) => {
   const title = uniqueTitle(testInfo, 'keyboard');
-  await page.goto('/');
+  await page.goto('/requests');
+  await expectPage(page, 'Requests');
 
   // Header navigation to the form.
   await tabTo(
@@ -49,6 +59,7 @@ test('create a request and update its status using only the keyboard', async ({
   );
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/requests\/new$/);
+  await expectPage(page, 'New request');
 
   // Fill in the form field by field.
   const titleField = page.getByRole('textbox', { name: 'Title' });
