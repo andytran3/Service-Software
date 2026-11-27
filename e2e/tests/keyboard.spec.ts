@@ -52,11 +52,8 @@ test('create a request and update its status using only the keyboard', async ({
   await page.goto('/requests');
   await expectPage(page, 'Requests');
 
-  // Header navigation to the form.
-  await tabTo(
-    page,
-    page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'New request' }),
-  );
+  // The list page's New request button opens the form.
+  await tabTo(page, page.getByRole('main').getByRole('link', { name: 'New request' }));
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/requests\/new$/);
   await expectPage(page, 'New request');

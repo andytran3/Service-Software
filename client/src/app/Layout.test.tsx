@@ -14,13 +14,15 @@ describe('Layout', () => {
 
     expect(screen.getByRole('banner')).toHaveTextContent('Service Portal');
     const nav = screen.getByRole('navigation', { name: 'Main' });
+    expect(
+      within(nav)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(['Home', 'Requests']);
+    expect(within(nav).getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/');
     expect(within(nav).getByRole('link', { name: 'Requests' })).toHaveAttribute(
       'href',
       '/requests',
-    );
-    expect(within(nav).getByRole('link', { name: 'New request' })).toHaveAttribute(
-      'href',
-      '/requests/new',
     );
     expect(screen.getByRole('main')).toHaveAttribute('id', 'main');
   });
@@ -28,12 +30,14 @@ describe('Layout', () => {
   it.each([
     ['/requests', 'Requests'],
     ['/requests/17918d78-824a-4810-af53-4e55b7d4493c', 'Requests'],
-    ['/requests/new', 'New request'],
-  ])('marks the current page in the navigation on %s', (path, currentName) => {
+    ['/requests/new', 'Requests'],
+    ['/', 'Home'],
+  ])('marks the current page in the navigation on %s', async (path, currentName) => {
     renderRoute(path);
 
-    const nav = screen.getByRole('navigation', { name: 'Main' });
-    for (const name of ['Requests', 'New request']) {
+    // The landing page's route runs a loader first, so wait for the layout to render.
+    const nav = await screen.findByRole('navigation', { name: 'Main' });
+    for (const name of ['Home', 'Requests']) {
       const link = within(nav).getByRole('link', { name });
       if (name === currentName) expect(link).toHaveAttribute('aria-current', 'page');
       else expect(link).not.toHaveAttribute('aria-current');
@@ -61,7 +65,7 @@ describe('Layout', () => {
     ).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/');
     const nav = screen.getByRole('navigation', { name: 'Main' });
-    expect(within(nav).queryAllByRole('link', { current: 'page' })).toHaveLength(0);
+    expect(within(nav).getByRole('link', { current: 'page' })).toHaveTextContent('Home');
   });
 
   it('opens an old /?q= search link on the request list', async () => {
@@ -87,14 +91,14 @@ describe('Layout', () => {
 
     await user.tab(); // skip link
     await user.tab(); // app name
-    await user.tab(); // Requests nav link
+    await user.tab(); // Home nav link
 
     const nav = screen.getByRole('navigation', { name: 'Main' });
+    expect(within(nav).getByRole('link', { name: 'Home' })).toHaveFocus();
+
+    await user.tab(); // Requests nav link
+
     expect(within(nav).getByRole('link', { name: 'Requests' })).toHaveFocus();
-
-    await user.tab(); // New request nav link
-
-    expect(within(nav).getByRole('link', { name: 'New request' })).toHaveFocus();
   });
 
   it('shows a not-found page for unknown routes', () => {

@@ -6,17 +6,15 @@ function navLinkClass(active: boolean): string {
 }
 
 /**
- * Which nav link is current. "Requests" covers the list and a request's detail page, but not
- * the new-request form, which has its own link (a plain NavLink would mark both).
+ * Which nav link is current. "Home" is the landing page only; "Requests" covers the list and
+ * everything under it (a request's detail page and the new-request form). The not-found page
+ * marks neither.
  */
 function useCurrentNav() {
+  const onHome = useMatch('/');
   const onList = useMatch('/requests');
-  const onRequest = useMatch('/requests/:id');
-  const onNewRequest = useMatch('/requests/new');
-  return {
-    requests: Boolean(onList || (onRequest && !onNewRequest)),
-    newRequest: Boolean(onNewRequest),
-  };
+  const onRequestPage = useMatch('/requests/:id');
+  return { home: Boolean(onHome), requests: Boolean(onList || onRequestPage) };
 }
 
 export function Layout() {
@@ -40,20 +38,20 @@ export function Layout() {
             <ul className="flex gap-4">
               <li>
                 <Link
+                  to="/"
+                  aria-current={current.home ? 'page' : undefined}
+                  className={navLinkClass(current.home)}
+                >
+                  Home
+                </Link>
+              </li>
+              <li>
+                <Link
                   to="/requests"
                   aria-current={current.requests ? 'page' : undefined}
                   className={navLinkClass(current.requests)}
                 >
                   Requests
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/requests/new"
-                  aria-current={current.newRequest ? 'page' : undefined}
-                  className={navLinkClass(current.newRequest)}
-                >
-                  New request
                 </Link>
               </li>
             </ul>

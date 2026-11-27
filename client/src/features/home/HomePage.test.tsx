@@ -24,7 +24,7 @@ describe('HomePage', () => {
       'Services',
     ]);
     const main = screen.getByRole('main');
-    // The hero has no New request button; the header's New request link is outside main.
+    // The hero has no New request button (the list page has one).
     expect(within(main).queryByRole('link', { name: 'New request' })).not.toBeInTheDocument();
   });
 
