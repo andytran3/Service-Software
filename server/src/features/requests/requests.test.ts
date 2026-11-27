@@ -288,6 +288,45 @@ describe('GET /api/requests?q= (search)', () => {
     expect(await search(`q=${encodeURIComponent('C:\\temp')}`)).toEqual(['C:\\temp folder']);
   });
 
+  describe('by request ID', () => {
+    it.each([
+      ['the first 8 characters (the short ID)', (id: string) => id.slice(0, 8)],
+      ['upper case with a leading #', (id: string) => `#${id.slice(0, 8).toUpperCase()}`],
+      ['a longer prefix with dashes', (id: string) => id.slice(0, 18)],
+      ['the full ID', (id: string) => id],
+      ['the full ID without dashes', (id: string) => id.replaceAll('-', '')],
+    ])('matches %s', async (_label, toQuery) => {
+      const [target] = await seed(
+        { title: 'Target request', description: 'x' },
+        { title: 'Other request', description: 'x' },
+      );
+
+      expect(await search(`q=${encodeURIComponent(toQuery(target!.id))}`)).toEqual([
+        'Target request',
+      ]);
+    });
+
+    it('does not treat fewer than 8 characters as an ID', async () => {
+      const [target] = await seed({ title: 'Target request', description: 'x' });
+
+      const response = await request(app).get(`/api/requests?q=${target!.id.slice(0, 7)}`);
+
+      expect(response.body).toEqual({ data: [] });
+    });
+
+    it('returns ID and title matches together, newest first', async () => {
+      const [target] = await seed({ title: 'Target request', description: 'x' });
+      const shortId = target!.id.slice(0, 8);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      await seed(
+        { title: `Follow-up to ${shortId}`, description: 'x' },
+        { title: 'Unrelated', description: 'x' },
+      );
+
+      expect(await search(`q=${shortId}`)).toEqual([`Follow-up to ${shortId}`, 'Target request']);
+    });
+  });
+
   it.each(['q=', `q=${encodeURIComponent('   ')}`])(
     'treats a blank search (%s) as no search',
     async (query) => {

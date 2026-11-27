@@ -119,7 +119,7 @@ test.describe('request workflow', () => {
 
     await page.goto('/requests');
 
-    const titles = await page.getByRole('row').locator('td:first-child').allTextContents();
+    const titles = await page.getByRole('row').locator('td:first-child a').allTextContents();
     expect(titles.indexOf(newer)).toBeGreaterThanOrEqual(0);
     expect(titles.indexOf(newer)).toBeLessThan(titles.indexOf(older));
   });

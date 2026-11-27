@@ -8,6 +8,8 @@ interface SearchFormProps {
   onSearch: (q: string) => void;
   /** Spacing classes for the form (defaults to the list page's top margin). */
   className?: string;
+  /** Example text shown in the empty box. It does not replace the label. */
+  placeholder?: string;
 }
 
 /**
@@ -15,7 +17,7 @@ interface SearchFormProps {
  * submitted (Enter or the button) with the trimmed text, or '' for a blank search. "Clear search"
  * appears while a search is active.
  */
-export function SearchForm({ q, onSearch, className = 'mt-6' }: SearchFormProps) {
+export function SearchForm({ q, onSearch, className = 'mt-6', placeholder }: SearchFormProps) {
   const [value, setValue] = useState(q);
   const [syncedQ, setSyncedQ] = useState(q);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +57,7 @@ export function SearchForm({ q, onSearch, className = 'mt-6' }: SearchFormProps)
         Search requests
       </label>
       <p id="search-hint" className="mt-0.5 text-xs text-gray-600">
-        Searches titles and descriptions.
+        Searches titles, descriptions and request IDs.
       </p>
       <div className="mt-1 flex flex-wrap gap-2">
         <input
@@ -63,11 +65,12 @@ export function SearchForm({ q, onSearch, className = 'mt-6' }: SearchFormProps)
           id="search"
           name="q"
           type="search"
+          placeholder={placeholder}
           value={value}
           onChange={(event) => setValue(event.target.value)}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
-          className={`min-w-0 flex-1 basis-60 rounded-md border bg-white px-3 py-2 text-sm shadow-sm ${error ? 'border-red-600' : 'border-gray-500'} ${focusRing}`}
+          className={`min-w-0 flex-1 basis-60 rounded-md border bg-white px-3 py-2 text-sm shadow-sm placeholder:text-gray-500 ${error ? 'border-red-600' : 'border-gray-500'} ${focusRing}`}
         />
         <button type="submit" className={primaryButton}>
           Search

@@ -24,7 +24,7 @@ describe('HomePage', () => {
       'Services',
     ]);
     const main = screen.getByRole('main');
-    // The hero has no New request button; the header's New request link is outside main.
+    // The hero has no New request button (the list page has one).
     expect(within(main).queryByRole('link', { name: 'New request' })).not.toBeInTheDocument();
   });
 
@@ -33,13 +33,14 @@ describe('HomePage', () => {
     const { user, router } = await renderHome();
 
     const search = screen.getByRole('searchbox', { name: 'Search requests' });
-    expect(search).toHaveAccessibleDescription('Searches titles and descriptions.');
+    expect(search).toHaveAccessibleDescription('Searches titles, descriptions and request IDs.');
     await user.type(search, '  badge reader  {Enter}');
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Requests' })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/requests');
     expect(router.state.location.search).toBe('?q=badge+reader');
-    expect(calls.at(-1)?.url).toBe('/api/requests?q=badge+reader');
+    // The list page also loads every request for its summary cards.
+    expect(calls.map((call) => call.url)).toContain('/api/requests?q=badge+reader');
   });
 
   it('opens the full list when a blank search is submitted', async () => {
