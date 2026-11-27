@@ -30,7 +30,6 @@ describe('Layout', () => {
   it.each([
     ['/requests', 'Requests'],
     ['/requests/17918d78-824a-4810-af53-4e55b7d4493c', 'Requests'],
-    ['/requests/new', 'Requests'],
     ['/', 'Home'],
   ])('marks the current page in the navigation on %s', async (path, currentName) => {
     renderRoute(path);
@@ -42,6 +41,22 @@ describe('Layout', () => {
       if (name === currentName) expect(link).toHaveAttribute('aria-current', 'page');
       else expect(link).not.toHaveAttribute('aria-current');
     }
+  });
+
+  it('shows a focused header without navigation on the new request form', async () => {
+    renderRoute('/requests/new');
+
+    const header = screen.getByRole('banner');
+    expect(within(header).getByRole('link', { name: 'Service Portal' })).toHaveAttribute(
+      'href',
+      '/',
+    );
+    expect(within(header).getByRole('link', { name: 'Cancel request' })).toHaveAttribute(
+      'href',
+      '/requests',
+    );
+    expect(screen.queryByRole('navigation', { name: 'Main' })).not.toBeInTheDocument();
+    expect(screen.getByRole('main')).toHaveAttribute('id', 'main');
   });
 
   it('marks no navigation link on the not-found page', () => {
